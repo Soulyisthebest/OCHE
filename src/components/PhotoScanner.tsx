@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Camera, Upload, CheckCircle2, ChevronRight, ChevronLeft, RotateCcw, AlertCircle, Sparkles, X, Plus } from 'lucide-react';
 import { PhotoSlotId, PhotoSlot } from '../types';
 import { SAMPLE_DEMO_CARS, SampleDemoCar } from '../data/sampleCars';
+import { compressImage } from '../utils/imageCompressor';
 
 const PHOTO_SLOTS: PhotoSlot[] = [
   {
@@ -96,13 +97,12 @@ export const PhotoScanner: React.FC<PhotoScannerProps> = ({
   const currentSlot = PHOTO_SLOTS[activeStepIndex];
   const totalCaptured = Object.keys(capturedPhotos).length;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const base64 = evt.target?.result as string;
+    try {
+      const base64 = await compressImage(file);
       setCapturedPhotos((prev) => ({
         ...prev,
         [currentSlot.id]: {
@@ -115,9 +115,11 @@ export const PhotoScanner: React.FC<PhotoScannerProps> = ({
       if (activeStepIndex < PHOTO_SLOTS.length - 1) {
         setActiveStepIndex((prev) => prev + 1);
       }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    } catch (err) {
+      console.error('Error compressing image:', err);
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const removePhoto = (slotId: PhotoSlotId) => {

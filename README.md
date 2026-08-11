@@ -58,7 +58,7 @@ Si deseas conectar la IA multimodal real de Gemini para analizar imágenes en ti
    ```env
    GEMINI_API_KEY="AIzaSyYourActualGeminiKeyHere"
    ```
-4. Reinicia el servidor local (`npm run dev`). Si la clave está presente, el endpoint `/api/analyze-car` usará el modelo `gemini-3.6-flash`. Si la clave no se configura o falla, la aplicación volverá automáticamente al modo **Demo Mode** sin interrumpir la experiencia.
+4. Reinicia el servidor local (`npm run dev`). Si la clave está presente, el endpoint `/api/analyze-car` usará el modelo `gemini-2.5-flash`. Si la clave no se configura o falla, la aplicación volverá automáticamente al modo **Demo Mode** sin interrumpir la experiencia.
 
 ---
 
