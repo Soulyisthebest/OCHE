@@ -1,0 +1,6 @@
+{
+  "name": "CARCHECK AI",
+  "description": "Asistente inteligente de inspección de vehículos usados y cálculo del coste real de compra con IA multimodal.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
