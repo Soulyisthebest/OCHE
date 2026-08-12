@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { calculateScore } from '../utils/scoreCalculator';
+import { calculatePurchaseScore, getPurchaseRecommendation } from '../utils/scoreCalculator';
 import { calculateRealCost } from '../utils/costCalculator';
 
-describe('CARCHECK AI — Score & Cost Calculators', () => {
-  describe('calculateScore', () => {
+describe('CARCHECK AI — Score, Cost & Recommendation Engines', () => {
+  describe('calculatePurchaseScore', () => {
     it('returns COMPRAR verdict for high score (>= 80)', () => {
-      const result = calculateScore({
+      const result = calculatePurchaseScore({
         reliability: 90,
         visibleState: 85,
         maintenance: 80,
@@ -14,12 +14,13 @@ describe('CARCHECK AI — Score & Cost Calculators', () => {
       });
 
       expect(result.score).toBeGreaterThanOrEqual(80);
-      expect(result.verdict).toBe('COMPRAR');
+      expect(result.code).toBe('BUY');
+      expect(result.verdictText).toBe('🟢 COMPRAR');
       expect(result.color).toBe('emerald');
     });
 
     it('returns NEGOCIAR verdict for medium score (60 - 79)', () => {
-      const result = calculateScore({
+      const result = calculatePurchaseScore({
         reliability: 70,
         visibleState: 65,
         maintenance: 70,
@@ -29,12 +30,13 @@ describe('CARCHECK AI — Score & Cost Calculators', () => {
 
       expect(result.score).toBeGreaterThanOrEqual(60);
       expect(result.score).toBeLessThan(80);
-      expect(result.verdict).toBe('NEGOCIAR');
+      expect(result.code).toBe('NEGOTIATE');
+      expect(result.verdictText).toBe('🟡 NEGOCIAR');
       expect(result.color).toBe('amber');
     });
 
     it('returns NO COMPRAR verdict for low score (< 60)', () => {
-      const result = calculateScore({
+      const result = calculatePurchaseScore({
         reliability: 40,
         visibleState: 50,
         maintenance: 30,
@@ -43,8 +45,32 @@ describe('CARCHECK AI — Score & Cost Calculators', () => {
       });
 
       expect(result.score).toBeLessThan(60);
-      expect(result.verdict).toBe('NO COMPRAR');
+      expect(result.code).toBe('AVOID');
+      expect(result.verdictText).toBe('🔴 NO COMPRAR');
       expect(result.color).toBe('red');
+    });
+  });
+
+  describe('getPurchaseRecommendation', () => {
+    it('returns BUY for 85', () => {
+      const rec = getPurchaseRecommendation(85);
+      expect(rec.code).toBe('BUY');
+      expect(rec.verdictText).toBe('🟢 COMPRAR');
+      expect(rec.reason).toBeTruthy();
+    });
+
+    it('returns NEGOTIATE for 70', () => {
+      const rec = getPurchaseRecommendation(70);
+      expect(rec.code).toBe('NEGOTIATE');
+      expect(rec.verdictText).toBe('🟡 NEGOCIAR');
+      expect(rec.reason).toBeTruthy();
+    });
+
+    it('returns AVOID for 45', () => {
+      const rec = getPurchaseRecommendation(45);
+      expect(rec.code).toBe('AVOID');
+      expect(rec.verdictText).toBe('🔴 NO COMPRAR');
+      expect(rec.reason).toBeTruthy();
     });
   });
 
@@ -74,3 +100,4 @@ describe('CARCHECK AI — Score & Cost Calculators', () => {
     });
   });
 });
+

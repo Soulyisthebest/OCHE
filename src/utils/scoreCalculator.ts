@@ -6,14 +6,50 @@ export interface ScoreBreakdown {
   mechanicalRisk: number; // 15%
 }
 
-export interface ScoreResult {
-  score: number;
+export type RecommendationCode = 'BUY' | 'NEGOTIATE' | 'AVOID';
+
+export interface PurchaseRecommendation {
+  code: RecommendationCode;
+  verdictText: '🟢 COMPRAR' | '🟡 NEGOCIAR' | '🔴 NO COMPRAR';
   label: string;
-  verdict: 'COMPRAR' | 'NEGOCIAR' | 'NO COMPRAR';
   color: 'emerald' | 'amber' | 'red';
+  reason: string;
 }
 
-export function calculateScore(breakdown: ScoreBreakdown): ScoreResult {
+export interface ScoreResult extends PurchaseRecommendation {
+  score: number;
+  verdict: 'COMPRAR' | 'NEGOCIAR' | 'NO COMPRAR';
+}
+
+export function getPurchaseRecommendation(score: number): PurchaseRecommendation {
+  if (score >= 80) {
+    return {
+      code: 'BUY',
+      verdictText: '🟢 COMPRAR',
+      label: 'Vehículo recomendado (Buena oportunidad)',
+      color: 'emerald',
+      reason: 'El vehículo presenta buena puntuación general en fiabilidad, estado visible y precio.'
+    };
+  } else if (score >= 60) {
+    return {
+      code: 'NEGOTIATE',
+      verdictText: '🟡 NEGOCIAR',
+      label: 'Opción aceptable con margen de negociación',
+      color: 'amber',
+      reason: 'Existen detalles estéticos o de mantenimiento pendiente que justifican pedir una rebaja en el precio.'
+    };
+  } else {
+    return {
+      code: 'AVOID',
+      verdictText: '🔴 NO COMPRAR',
+      label: 'Alto riesgo de averías o precio excesivo',
+      color: 'red',
+      reason: 'El estado visible o la fiabilidad del modelo implican un riesgo elevado de reparación costosa.'
+    };
+  }
+}
+
+export function calculatePurchaseScore(breakdown: ScoreBreakdown): ScoreResult {
   const weighted =
     breakdown.reliability * 0.25 +
     breakdown.visibleState * 0.20 +
@@ -22,27 +58,14 @@ export function calculateScore(breakdown: ScoreBreakdown): ScoreResult {
     breakdown.mechanicalRisk * 0.15;
 
   const score = Math.round(weighted);
+  const rec = getPurchaseRecommendation(score);
 
-  if (score >= 80) {
-    return {
-      score,
-      label: 'Vehículo recomendado (Buena oportunidad)',
-      verdict: 'COMPRAR',
-      color: 'emerald'
-    };
-  } else if (score >= 60) {
-    return {
-      score,
-      label: 'Opción aceptable con margen de negociación',
-      verdict: 'NEGOCIAR',
-      color: 'amber'
-    };
-  } else {
-    return {
-      score,
-      label: 'Alto riesgo de averías o precio excesivo',
-      verdict: 'NO COMPRAR',
-      color: 'red'
-    };
-  }
+  return {
+    score,
+    ...rec,
+    verdict: rec.code === 'BUY' ? 'COMPRAR' : rec.code === 'NEGOTIATE' ? 'NEGOCIAR' : 'NO COMPRAR'
+  };
 }
+
+export const calculateScore = calculatePurchaseScore;
+
