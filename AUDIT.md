@@ -268,3 +268,43 @@ Todas las correcciones prioritarias han sido aplicadas y verificadas:
 - **Compilación (`npm run build`) y Linter (`npm run lint`)** validados con 0 errores.
 - **Demo Mode por defecto a 0 €** 100% garantizado y operacional en local.
 
+---
+
+## 🏎️ FASE 2: MOTOR DE CONOCIMIENTO DE VEHÍCULOS (ACTUALIZACIÓN DE ARQUITECTURA)
+
+Se ha completado la **Fase 2: Motor de Conocimiento de Vehículos**, estableciendo una estructura de datos rica, fuertemente tipada y escalable para representar el conocimiento técnico de cualquier coche.
+
+### 1. Tipos de Dominio Definidos (`/src/types/vehicleEngine.ts`):
+- **`Vehicle`**: Objeto raíz que representa Marca $\rightarrow$ Modelo $\rightarrow$ Generación $\rightarrow$ Motor $\rightarrow$ Transmisión $\rightarrow$ Problemas Conocidos $\rightarrow$ Mantenimiento $\rightarrow$ Sistemas $\rightarrow$ Piezas $\rightarrow$ Reparaciones $\rightarrow$ Modelo 3D.
+- **`Engine`**: Especificaciones del bloque motor (Código motor ej: `EA288`, `EB2`, `1KR-FE`, `M47N`, combustible, CV, cilindrada, turbo, fallos endémicos).
+- **`KnownProblem`**: Titulo, descripción detallada, gravedad (`low` / `medium` / `high` / `critical`) y estimación de coste de reparación.
+- **`MaintenanceItem`**: Intervalo recomendado en kilómetros y años, más estimación de coste.
+- **`VehicleSystem`**: Sistemas principales (Motor, Frenos, Suspensión, Transmisión, Batería, Neumáticos).
+- **`Part`**: Pieza mecánica vinculada a un sistema con función, síntomas comunes, problemas conocidos, rango de precios nuevos/usados, mano de obra y nivel de riesgo.
+- **`Repair`**: Ficha de reparación con estimación de coste y urgencia.
+- **`Car3DModel` & `Car3DPart`**: Mapeo tridimensional interactivo para el visor 360º.
+
+### 2. Base de Datos de Conocimiento Migrada (`/src/data/vehicleKnowledgeDatabase.ts`):
+Se han migrado los 4 vehículos de demostración mantenidos a la nueva estructura estructurada sin perder ninguna información:
+1. **Volkswagen Golf VII 2.0 TDI** (Motor EA288 150 CV, distribución, bomba de agua, DPF).
+2. **BMW Serie 3 320d E46** (Motor M47N 150 CV, palomillas de admisión, silentblocks trapecios).
+3. **Peugeot 208 1.2 PureTech** (Motor EB2 82 CV, correa húmeda en aceite, bomba de aceite).
+4. **Toyota Yaris 1.0 VVT-i** (Motor 1KR-FE 69 CV, cadena de distribución de por vida).
+
+### 3. Implementación del Repositorio (`LocalVehicleRepository`):
+- Implements `VehicleRepository` en `/src/repositories/LocalVehicleRepository.ts`.
+- Mantiene compatibilidad total con la UI previa a través de los métodos de `SampleDemoCar` mientras expone la nueva API de conocimiento de dominio:
+  - `getAllDomainVehicles()`
+  - `getDomainVehicleById(id)`
+  - `searchDomainVehicles(query)`
+- Extendido por `DemoVehicleAdapter` sin alterar componentes frontend.
+
+### 4. Pruebas Unitarias Automatizadas (`/src/__tests__/knowledgeEngine.test.ts`):
+Pasadas al 100% (17/17 tests totales en verde):
+1. **Existencia de los 4 vehículos**.
+2. **Asignación completa de especificaciones de motor**.
+3. **Registro de problemas conocidos por modelo**.
+4. **Relación correcta de piezas mecánicas con sistemas**.
+5. **Búsqueda eficiente por marca o modelo**.
+6. **Recuperación individual por ID único**.
+

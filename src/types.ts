@@ -149,3 +149,5 @@ export interface CarZone3D {
   z: number;
   parts: CarPartInfo[];
 }
+
+export * from './types/vehicleEngine';
