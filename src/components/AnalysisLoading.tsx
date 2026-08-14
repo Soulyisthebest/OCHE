@@ -1,87 +1,96 @@
-import React, { useEffect, useState } from 'react';
-import { Camera, Sparkles, CheckCircle2, Shield, Eye, Cpu, Zap } from 'lucide-react';
+import React from 'react';
+import { Cpu, CheckCircle2, ShieldCheck, Sparkles, Activity } from 'lucide-react';
+import { AnalysisStatus } from '../types/analysisSession';
 
-const ANALYSIS_STEPS = [
-  'Procesando fotografías con visión multimodal...',
-  'Identificando marca, modelo y generación exacta...',
-  'Inspeccionando carrocería, faros y abolladuras...',
-  'Evaluando desgaste del interior y mandos...',
-  'Analizando cuadro de instrumentos en busca de testigos...',
-  'Cruzando base de datos de averías conocidas del modelo...',
-  'Calculando costes reales de mantenimiento y reparaciones...',
-  'Generando informe de puntuación y recomendación final...'
+interface AnalysisLoadingProps {
+  status?: AnalysisStatus;
+  progressPercent?: number;
+  stageMessage?: string;
+}
+
+const DEFAULT_STAGES = [
+  { key: 'SCANNING', label: '1. Procesamiento visual de fotos y clasificación de ángulos' },
+  { key: 'IDENTIFYING', label: '2. Identificación de marca, generación y motorización' },
+  { key: 'ANALYZING', label: '3. Detección de evidencias y fallos endémicos' },
+  { key: 'CALCULATING', label: '4. Cálculo de matriz de riesgo, costes reales y precio objetivo' },
+  { key: 'READY', label: '5. Generación de informe técnico final' }
 ];
 
-export const AnalysisLoading: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [progress, setProgress] = useState(10);
+export const AnalysisLoading: React.FC<AnalysisLoadingProps> = ({
+  status = 'SCANNING',
+  progressPercent = 35,
+  stageMessage = 'Analizando vehículo con visión artificial y base técnica...'
+}) => {
+  const getStageIndex = (s: AnalysisStatus | string) => {
+    switch (s) {
+      case 'SCANNING': return 0;
+      case 'IDENTIFYING': return 1;
+      case 'ANALYZING': return 2;
+      case 'CALCULATING': return 3;
+      case 'READY': return 4;
+      default: return 1;
+    }
+  };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentStep((prev) => {
-        if (prev < ANALYSIS_STEPS.length - 1) {
-          return prev + 1;
-        }
-        return prev;
-      });
-
-      setProgress((prev) => {
-        if (prev < 92) {
-          return prev + Math.floor(Math.random() * 12) + 8;
-        }
-        return 96;
-      });
-    }, 900);
-
-    return () => clearInterval(interval);
-  }, []);
+  const currentIndex = getStageIndex(status);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-950 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Background glow and grid */}
-      <div className="absolute inset-0 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:24px_24px] opacity-10 pointer-events-none" />
-      <div className="w-80 h-80 bg-cyan-500/15 blur-[120px] rounded-full absolute pointer-events-none" />
+    <div className="min-h-[calc(100vh-4rem)] bg-[#0A0A0C] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="w-96 h-96 bg-cyan-500/10 blur-[140px] rounded-full absolute pointer-events-none" />
 
-      <div className="max-w-md w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl text-center relative z-10 flex flex-col items-center">
-        {/* Animated Scanner Ring */}
-        <div className="relative w-28 h-28 mb-6 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-4 border-slate-800" />
+      <div className="max-w-md w-full bg-[#16161D] border border-white/10 rounded-[32px] p-8 shadow-2xl backdrop-blur-xl text-center relative z-10 flex flex-col items-center space-y-6">
+        {/* Animated Scanner Radar */}
+        <div className="relative w-28 h-28 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full border-4 border-white/10" />
           <div className="absolute inset-0 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin" />
           <div className="w-20 h-20 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shadow-inner">
             <Cpu className="w-10 h-10 text-cyan-400 animate-pulse" />
           </div>
         </div>
 
-        <h2 className="text-2xl font-black tracking-tight text-white mb-2">
-          CARCHECK <span className="text-cyan-400">AI</span>
-        </h2>
-        <p className="text-xs font-semibold text-slate-400 mb-6 uppercase tracking-widest">
-          Inspeccionando vehículo...
-        </p>
-
-        {/* Progress bar */}
-        <div className="w-full bg-slate-950 rounded-full h-3 mb-6 p-0.5 border border-slate-800 overflow-hidden">
-          <div
-            className="bg-gradient-to-r from-cyan-500 via-sky-400 to-blue-600 h-full rounded-full transition-all duration-500 shadow-lg shadow-cyan-500/50"
-            style={{ width: `${Math.min(progress, 100)}%` }}
-          />
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-black uppercase tracking-widest mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            OCHE MOTOR DETERMINISTA
+          </div>
+          <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">
+            Inspeccionando Coche
+          </h2>
+          <p className="text-xs text-white/60 mt-1 font-medium">
+            {stageMessage}
+          </p>
         </div>
 
-        {/* Dynamic step ticker */}
-        <div className="w-full bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 text-left space-y-2 mb-4">
-          {ANALYSIS_STEPS.map((stepText, idx) => {
-            const isDone = idx < currentStep;
-            const isCurrent = idx === currentStep;
+        {/* Progress Bar */}
+        <div className="w-full space-y-1.5">
+          <div className="flex justify-between text-[11px] font-black uppercase tracking-wider text-white/50">
+            <span>Progreso</span>
+            <span className="text-cyan-400">{progressPercent}%</span>
+          </div>
+          <div className="w-full bg-black rounded-full h-3 p-0.5 border border-white/10 overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 h-full rounded-full transition-all duration-500 shadow-lg shadow-cyan-500/50"
+              style={{ width: `${Math.min(100, Math.max(10, progressPercent))}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Pipeline Stage Checklist */}
+        <div className="w-full bg-black/60 border border-white/5 rounded-2xl p-4 text-left space-y-2.5">
+          {DEFAULT_STAGES.map((st, idx) => {
+            const isDone = idx < currentIndex;
+            const isCurrent = idx === currentIndex;
 
             return (
               <div
-                key={idx}
+                key={st.key}
                 className={`flex items-center gap-2.5 text-xs transition-all ${
                   isDone
                     ? 'text-emerald-400 font-medium'
                     : isCurrent
                     ? 'text-cyan-300 font-bold'
-                    : 'text-slate-600 opacity-50'
+                    : 'text-white/30'
                 }`}
               >
                 {isDone ? (
@@ -89,16 +98,16 @@ export const AnalysisLoading: React.FC = () => {
                 ) : isCurrent ? (
                   <div className="w-4 h-4 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin flex-shrink-0" />
                 ) : (
-                  <div className="w-4 h-4 rounded-full bg-slate-800 flex-shrink-0" />
+                  <div className="w-4 h-4 rounded-full bg-white/10 flex-shrink-0" />
                 )}
-                <span className="truncate">{stepText}</span>
+                <span className="truncate">{st.label}</span>
               </div>
             );
           })}
         </div>
 
-        <p className="text-[11px] text-slate-500">
-          Un momento. Analizando detalles técnicos en lenguaje sencillo...
+        <p className="text-[11px] text-white/40 font-medium">
+          Traduciendo datos mecánicos complejos a lenguaje claro y accionable...
         </p>
       </div>
     </div>

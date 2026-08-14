@@ -185,3 +185,6 @@ export interface CarZone3D {
 }
 
 export * from './types/vehicleEngine';
+export * from './types/analysisSession';
+export * from './types/evidence';
+export * from './types/risk';

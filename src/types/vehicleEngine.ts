@@ -14,6 +14,8 @@ export interface Engine {
   cylinders?: number;
   turbo?: boolean;
   knownIssues?: string[];
+  timingType?: 'Belt' | 'Chain' | 'Correa' | 'Cadena';
+  emissionStandard?: 'Euro 4' | 'Euro 5' | 'Euro 6' | 'Euro 6d';
 }
 
 export interface KnownProblem {
@@ -23,6 +25,8 @@ export interface KnownProblem {
   severity: 'low' | 'medium' | 'high' | 'critical' | 'Baja' | 'Media' | 'Alta' | 'Crítica';
   affectedComponent?: string;
   estimatedCost?: CostEstimate;
+  failureRate?: 'Raro' | 'Ocasional' | 'Frecuente' | 'Endémico';
+  preventionAdvice?: string;
 }
 
 export interface MaintenanceItem {
@@ -32,6 +36,7 @@ export interface MaintenanceItem {
   intervalYears?: number;
   costEstimate: CostEstimate;
   description?: string;
+  criticality?: 'Recomendado' | 'Obligatorio' | 'Preventivo';
 }
 
 export interface VehicleSystem {
@@ -46,12 +51,22 @@ export interface Part {
   name: string;
   system: string; // System ID or System Name
   function: string;
+  location?: string;
+  importance?: 'Crítica' | 'Alta' | 'Media' | 'Baja';
+  failureModes?: string[];
+  symptoms?: string[];
+  inspectionMethods?: string[];
   commonSymptoms: string[];
   knownProblems: KnownProblem[];
+  maintenanceInterval?: string;
   newPriceRange: CostEstimate;
   usedPriceRange: CostEstimate;
   laborCostRange: CostEstimate;
+  repairDifficulty?: 'Fácil' | 'Intermedio' | 'Complejo' | 'Taller Especializado';
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  confidence?: number;
+  source?: string;
+  isDemo?: boolean;
 }
 
 export interface Repair {
@@ -61,6 +76,7 @@ export interface Repair {
   partId?: string;
   costEstimate: CostEstimate;
   urgency: 'low' | 'medium' | 'high' | 'Baja' | 'Media' | 'Alta';
+  laborHoursEstimated?: number;
 }
 
 export interface Car3DPart {
@@ -81,11 +97,29 @@ export interface Car3DModel {
   zones: Car3DPart[];
 }
 
+export interface VehicleIdentityDetails {
+  brand: string;
+  model: string;
+  generation: string;
+  facelift?: string;
+  trim?: string;
+  engineCode?: string;
+  engineName: string;
+  fuel: 'Gasolina' | 'Diésel' | 'Híbrido' | 'Eléctrico' | 'GLP';
+  transmission: 'Manual' | 'Automático';
+  powerHp: number;
+  bodyStyle?: 'Hatchback' | 'Sedán' | 'Familiar' | 'SUV' | 'Coupé';
+  yearRange: string;
+}
+
 export interface Vehicle {
   id: string;
   brand: string;
   model: string;
   generation: string;
+  facelift?: string;
+  trim?: string;
+  bodyStyle?: 'Hatchback' | 'Sedán' | 'Familiar' | 'SUV' | 'Coupé';
   yearFrom: number;
   yearTo: number | 'present' | null;
   engine: Engine;

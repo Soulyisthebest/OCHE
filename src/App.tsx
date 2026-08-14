@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { HeroHome } from './components/HeroHome';
 import { PhotoScanner } from './components/PhotoScanner';
+import { SellerDataCards } from './components/SellerDataCards';
 import { AnalysisLoading } from './components/AnalysisLoading';
+import { VehicleConfirmCard } from './components/VehicleConfirmCard';
 import { MissingDataPrompt } from './components/MissingDataPrompt';
 import { AnalysisReport } from './components/AnalysisReport';
 import { GarageHistory } from './components/GarageHistory';
@@ -12,12 +14,34 @@ import { LearnCars } from './components/LearnCars';
 import { CarChatAssistant } from './components/CarChatAssistant';
 import { CarComparator } from './components/CarComparator';
 import { CarAnalysisReport, PhotoSlotId } from './types';
+import { VehicleAnalysisSession, AnalysisStatus, VehicleIdentificationCandidate } from './types/analysisSession';
 import { SampleDemoCar } from './data/sampleCars';
-import { analyzeCarPhotosServer } from './services/geminiService';
+import { AnalysisSessionService } from './services/AnalysisSessionService';
+import { localVehicleRepository } from './repositories/LocalVehicleRepository';
+import { CountryEngine } from './services/CountryEngine';
+import { LocalizationService } from './services/LocalizationService';
+import { CountryProfile, CountryCode } from './types/country';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<string>('home');
+  const [currentSession, setCurrentSession] = useState<VehicleAnalysisSession | null>(null);
   const [currentReport, setCurrentReport] = useState<CarAnalysisReport | null>(null);
+  const [countryProfile, setCountryProfile] = useState<CountryProfile>(() => {
+    return CountryEngine.autoDetectCountry();
+  });
+
+  // Pipeline loading state
+  const [loadingStatus, setLoadingStatus] = useState<AnalysisStatus>('SCANNING');
+  const [loadingProgress, setLoadingProgress] = useState<number>(20);
+  const [loadingMessage, setLoadingMessage] = useState<string>('Iniciando análisis del vehículo...');
+
+  // Temporary captured photos from scanner before seller data step
+  const [pendingPhotos, setPendingPhotos] = useState<
+    Partial<Record<PhotoSlotId, { url?: string; base64?: string }>>
+  >({});
+  const [tempMileage, setTempMileage] = useState<number | undefined>(undefined);
+  const [tempPrice, setTempPrice] = useState<number | undefined>(undefined);
+
   const [savedReports, setSavedReports] = useState<CarAnalysisReport[]>(() => {
     try {
       const stored = localStorage.getItem('carcheck_saved_reports');
@@ -36,50 +60,98 @@ export default function App() {
     }
   }, [savedReports]);
 
-  // Handle photo scanning completion
-  const handlePhotosComplete = async (
+  const handleCountryChange = (profile: CountryProfile) => {
+    setCountryProfile(profile);
+    CountryEngine.setActiveCountryCode(profile.countryCode);
+    LocalizationService.setActiveLanguage(profile.language);
+  };
+
+  // Handle photo scanning completion -> proceeds to Seller Data Cards
+  const handlePhotosComplete = (
     photos: Partial<Record<PhotoSlotId, { url?: string; base64?: string }>>,
     mileageKm?: number,
     askingPrice?: number
   ) => {
+    setPendingPhotos(photos);
+    setTempMileage(mileageKm);
+    setTempPrice(askingPrice);
+    setCurrentView('seller_data');
+  };
+
+  // Run the full vehicle analysis pipeline
+  const executeAnalysisPipeline = async (sellerData: {
+    askingPrice?: number;
+    mileageKm?: number;
+    year?: number;
+    fuel?: string;
+    transmission?: string;
+  }) => {
     setCurrentView('loading');
+    setLoadingStatus('SCANNING');
+    setLoadingProgress(15);
+    setLoadingMessage('Procesando fotografías y clasificando ángulos...');
 
     try {
-      const report = await analyzeCarPhotosServer(photos, { mileageKm, askingPrice });
+      const session = await AnalysisSessionService.runAnalysis(
+        {
+          photos: pendingPhotos,
+          askingPrice: sellerData.askingPrice,
+          mileageKm: sellerData.mileageKm,
+          year: sellerData.year,
+          fuel: sellerData.fuel,
+          transmission: sellerData.transmission
+        },
+        (status, progress, message) => {
+          setLoadingStatus(status);
+          setLoadingProgress(progress);
+          setLoadingMessage(message);
+        }
+      );
+
+      setCurrentSession(session);
+      const report = AnalysisSessionService.sessionToLegacyReport(session);
       setCurrentReport(report);
 
-      if (report.identity.needsConfirmation && (!mileageKm || !askingPrice)) {
-        setCurrentView('missing_prompt');
+      // If identification produced candidates, show confirmation card
+      if (session.identification?.candidates && session.identification.candidates.length > 0) {
+        setCurrentView('confirm_vehicle');
       } else {
         setCurrentView('report');
       }
     } catch (err) {
-      console.error('Failed to analyze photos:', err);
+      console.error('Analysis execution failed:', err);
       setCurrentView('report');
     }
+  };
+
+  // Handle vehicle confirmation
+  const handleConfirmVehicle = async (candidate: VehicleIdentificationCandidate) => {
+    if (currentSession) {
+      const matchedDomainVehicle = await localVehicleRepository.getDomainVehicleById(candidate.vehicleId);
+      const updatedSession: VehicleAnalysisSession = {
+        ...currentSession,
+        vehicle: matchedDomainVehicle || currentSession.vehicle,
+        identification: {
+          ...currentSession.identification!,
+          brand: candidate.brand,
+          model: candidate.model,
+          generation: candidate.generation,
+          engine: candidate.engine,
+          fuel: candidate.fuel,
+          power: candidate.power,
+          transmission: candidate.transmission,
+          confidence: candidate.confidence
+        }
+      };
+      setCurrentSession(updatedSession);
+      setCurrentReport(AnalysisSessionService.sessionToLegacyReport(updatedSession));
+    }
+    setCurrentView('report');
   };
 
   // Select preloaded sample car
   const handleSelectSampleCar = (sample: SampleDemoCar) => {
     setCurrentReport(sample.report);
-    setCurrentView('report');
-  };
-
-  // Missing data prompt confirmation
-  const handleConfirmMissingData = (km?: number, price?: number) => {
-    if (!currentReport) return;
-
-    const updated = { ...currentReport };
-    if (km) updated.mileageKm = km;
-    if (price) {
-      updated.userPrice = price;
-      updated.realCost.askingPrice = price;
-      updated.realCost.totalMin = price + 200 + (updated.realCost.initialMaintenanceMin || 250) + (updated.realCost.visibleRepairsMin || 200);
-      updated.realCost.totalMax = price + 250 + (updated.realCost.initialMaintenanceMax || 400) + (updated.realCost.visibleRepairsMax || 400);
-    }
-    updated.identity.needsConfirmation = false;
-
-    setCurrentReport(updated);
     setCurrentView('report');
   };
 
@@ -103,12 +175,17 @@ export default function App() {
     : false;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950">
+    <div
+      dir={countryProfile.direction}
+      className={`min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950 ${countryProfile.direction === 'rtl' ? 'rtl font-[Tahoma,sans-serif]' : 'ltr'}`}
+    >
       {/* Header bar */}
       <Header
         currentView={currentView}
         onNavigate={(v) => setCurrentView(v)}
         savedCount={savedReports.length}
+        currentCountry={countryProfile.countryCode}
+        onCountryChange={handleCountryChange}
       />
 
       {/* Main View Router */}
@@ -130,12 +207,28 @@ export default function App() {
           />
         )}
 
-        {currentView === 'loading' && <AnalysisLoading />}
+        {currentView === 'seller_data' && (
+          <SellerDataCards
+            initialPrice={tempPrice}
+            initialMileage={tempMileage}
+            onSubmit={(data) => executeAnalysisPipeline(data)}
+            onSkip={() => executeAnalysisPipeline({ askingPrice: tempPrice, mileageKm: tempMileage })}
+          />
+        )}
 
-        {currentView === 'missing_prompt' && currentReport && (
-          <MissingDataPrompt
-            report={currentReport}
-            onConfirm={handleConfirmMissingData}
+        {currentView === 'loading' && (
+          <AnalysisLoading
+            status={loadingStatus}
+            progressPercent={loadingProgress}
+            stageMessage={loadingMessage}
+          />
+        )}
+
+        {currentView === 'confirm_vehicle' && currentSession?.identification && (
+          <VehicleConfirmCard
+            identification={currentSession.identification}
+            onConfirm={handleConfirmVehicle}
+            onManualOverride={() => setCurrentView('report')}
           />
         )}
 
@@ -146,6 +239,7 @@ export default function App() {
             isSaved={isCurrentReportSaved}
             onLaunchAssistant={() => setCurrentView('assistant')}
             onLaunch3D={() => setCurrentView('3d')}
+            countryProfile={countryProfile}
           />
         )}
 
