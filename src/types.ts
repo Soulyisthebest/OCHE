@@ -20,10 +20,15 @@ export interface PhotoSlot {
   capturedBase64?: string;
 }
 
+export type ConfidenceLevel = 'CONFIRMADO' | 'PROBABLE' | 'DESCONOCIDO';
+export type PurchaseVerdict = 'BUY' | 'NEGOTIATE' | 'AVOID';
+
 export interface VehicleIdentity {
   make: string;
   model: string;
   generation?: string;
+  version?: string;
+  bodyStyle?: string;
   estimatedYearMin: number;
   estimatedYearMax: number;
   engine?: string;
@@ -31,6 +36,7 @@ export interface VehicleIdentity {
   powerHp?: number;
   transmission?: 'Manual' | 'Automático';
   confidenceScore: number; // 0 to 100
+  confidenceMap?: Record<string, ConfidenceLevel>;
   needsConfirmation: boolean;
 }
 
@@ -65,6 +71,7 @@ export interface RepairItem {
   totalEstimatedMax: number;
   priority: 'Baja' | 'Media' | 'Alta';
   category: string;
+  isDemoData?: boolean;
 }
 
 export interface ChecklistItem {
@@ -91,6 +98,16 @@ export interface RealCostBreakdown {
   visibleRepairsMax: number;
   totalMin: number;
   totalMax: number;
+  isDemoData?: boolean;
+}
+
+export interface NegotiationTarget {
+  askingPrice: number;
+  riskCost: number;
+  targetPriceMin: number;
+  targetPriceMax: number;
+  maxRecommendedPrice: number;
+  disclaimer: string;
 }
 
 export interface CarAnalysisReport {
@@ -103,38 +120,55 @@ export interface CarAnalysisReport {
   score: number; // 0 to 100
   scoreLabel: 'Buena opción' | 'Precaución / negociar' | 'Alto riesgo';
   scoreBadgeColor: 'green' | 'yellow' | 'red';
+  verdict?: PurchaseVerdict;
   scoreCategories: ScoreCategory[];
   visualObservations: VisualObservation[];
   modelProsCons: ModelProCon[];
   realCost: RealCostBreakdown;
+  negotiation?: NegotiationTarget;
   repairs: RepairItem[];
   checklist: ChecklistItem[];
   recommendation: string;
   cannotDetermineNote: string;
 }
 
-export interface AssistantStep {
+export interface InspectionStepOption {
+  label: string;
+  type: 'yes' | 'no' | 'unsure';
+  advice: string;
+  riskLevel: 'low' | 'medium' | 'high';
+  nextStepId?: number;
+}
+
+export interface InspectionStep {
   id: number;
   title: string;
   zone: string;
-  instruction: string;
+  description?: string;
+  instruction?: string;
   question: string;
-  options: {
-    label: string;
-    type: 'yes' | 'no' | 'unsure';
-    advice: string;
-    riskLevel: 'low' | 'medium' | 'high';
-  }[];
+  options: InspectionStepOption[];
+  riskLevel?: 'low' | 'medium' | 'high';
+  explanation?: string;
 }
+
+export type AssistantStep = InspectionStep;
 
 export interface CarPartInfo {
   id: string;
   name: string;
+  system?: string;
+  location?: string;
+  whatItDoes?: string;
   description: string;
+  whatCanFail?: string;
+  symptoms?: string[];
+  maintenance?: string;
   priceNew?: string;
   priceRefurbished?: string;
   priceUsed?: string;
   laborCost?: string;
+  totalCost?: string;
   commonIssues: string[];
 }
 

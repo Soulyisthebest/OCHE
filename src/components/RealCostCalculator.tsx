@@ -72,12 +72,19 @@ export const RealCostCalculator: React.FC<RealCostCalculatorProps> = ({
       </div>
 
       {/* Main Big Result Banner */}
-      <div className="bg-black border border-blue-500/30 rounded-2xl p-5 mb-6 shadow-xl">
+      <div className="bg-black border border-blue-500/30 rounded-2xl p-5 mb-4 shadow-xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] block">
-              COSTE REAL ESTIMADO TOTAL
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
+                COSTE REAL ESTIMADO TOTAL
+              </span>
+              {initialCost.isDemoData && (
+                <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black uppercase border border-amber-500/30">
+                  DEMO DATA
+                </span>
+              )}
+            </div>
             <div className="text-2xl sm:text-3xl font-black text-blue-400 tracking-tighter mt-0.5">
               {totalMin.toLocaleString('es-ES')} € – {totalMax.toLocaleString('es-ES')} €
             </div>
@@ -86,6 +93,32 @@ export const RealCostCalculator: React.FC<RealCostCalculatorProps> = ({
           <div className="text-right">
             <span className="inline-block px-3 py-1 rounded-full bg-blue-500/20 text-[10px] font-black text-blue-300 uppercase">
               RECOMENDADO CON MANTENIMIENTO
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Target Negotiation Price Box */}
+      <div className="bg-gradient-to-br from-emerald-950/80 to-slate-900 border border-emerald-500/40 rounded-2xl p-4 mb-6 shadow-lg">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+            🎯 PRECIO OBJETIVO PARA NEGOCIAR
+          </span>
+          <span className="text-[9px] text-white/50 font-bold uppercase">Estimación orientativa</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold">
+          <div className="bg-black/60 p-3 rounded-xl border border-emerald-500/20">
+            <span className="text-white/50 text-[10px] block uppercase">Precio Objetivo Sugerido</span>
+            <span className="text-xl font-black text-emerald-400">
+              {Math.max(1000, askingPrice - (repairsMax + Math.round(maintMin * 0.5))).toLocaleString('es-ES')} €
+            </span>
+          </div>
+
+          <div className="bg-black/60 p-3 rounded-xl border border-amber-500/20">
+            <span className="text-white/50 text-[10px] block uppercase">Precio Máximo Recomendado</span>
+            <span className="text-xl font-black text-amber-400">
+              {Math.max(1000, askingPrice - Math.round(repairsMax * 0.5)).toLocaleString('es-ES')} €
             </span>
           </div>
         </div>

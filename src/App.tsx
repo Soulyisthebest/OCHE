@@ -10,6 +10,7 @@ import { Car3DExplorer } from './components/Car3DExplorer';
 import { AssistantMode } from './components/AssistantMode';
 import { LearnCars } from './components/LearnCars';
 import { CarChatAssistant } from './components/CarChatAssistant';
+import { CarComparator } from './components/CarComparator';
 import { CarAnalysisReport, PhotoSlotId } from './types';
 import { SampleDemoCar } from './data/sampleCars';
 import { analyzeCarPhotosServer } from './services/geminiService';
@@ -157,6 +158,17 @@ export default function App() {
             }}
             onDeleteReport={handleDeleteReport}
             onStartNewScan={() => setCurrentView('scan')}
+          />
+        )}
+
+        {currentView === 'compare' && (
+          <CarComparator
+            savedReports={savedReports}
+            onBack={() => setCurrentView('home')}
+            onSelectReport={(r) => {
+              setCurrentReport(r);
+              setCurrentView('report');
+            }}
           />
         )}
 

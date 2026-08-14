@@ -7,64 +7,52 @@ import { compressImage } from '../utils/imageCompressor';
 const PHOTO_SLOTS: PhotoSlot[] = [
   {
     id: 'front',
-    label: 'Parte delantera',
+    label: '1. FRONTAL',
     guide: 'Fotografía el frontal completo. Intenta que el coche ocupe la mayor parte de la pantalla.',
     iconName: 'Car',
     required: true
   },
   {
     id: 'back',
-    label: 'Parte trasera',
+    label: '2. TRASERA',
     guide: 'Fotografía la zaga del coche abarcando pilotos, tubo de escape y maletero cerrado.',
     iconName: 'Car'
   },
   {
     id: 'left',
-    label: 'Lateral izquierdo',
+    label: '3. LATERAL IZQUIERDO',
     guide: 'Captura el lateral completo de lado a lado para verificar línea de puertas y pintura.',
     iconName: 'Car'
   },
   {
     id: 'right',
-    label: 'Lateral derecho',
+    label: '4. LATERAL DERECHO',
     guide: 'Captura el otro lateral desde el paso de rueda delantero al trasero.',
     iconName: 'Car'
   },
   {
     id: 'interior',
-    label: 'Interior y asientos',
+    label: '5. INTERIOR',
     guide: 'Muestra el estado del volante, asiento del conductor y consola central.',
     iconName: 'Car'
   },
   {
     id: 'dashboard',
-    label: 'Cuadro de instrumentos',
+    label: '6. CUADRO DE INSTRUMENTOS',
     guide: 'Fotografía el cuadro con el motor en marcha para revisar si hay testigos de avería encendidos.',
     iconName: 'Gauge'
   },
   {
     id: 'engine',
-    label: 'Vano Motor',
-    guide: 'Abre el capó y haz una foto limpia del motor. Importante para buscar manchas de aceite o manchones.',
+    label: '7. MOTOR',
+    guide: 'Abre el capó y haz una foto limpia del motor. Importante para buscar manchas de aceite o corrosión.',
     iconName: 'Cpu'
   },
   {
     id: 'tires',
-    label: 'Neumáticos',
+    label: '8. NEUMÁTICOS',
     guide: 'Enfoca de cerca el dibujo del neumático delantero para revisar el desgaste visual.',
     iconName: 'CircleDot'
-  },
-  {
-    id: 'trunk',
-    label: 'Maletero',
-    guide: 'Abre el maletero y fotografía la zona de la rueda de repuesto o kit antipinchazos.',
-    iconName: 'Package'
-  },
-  {
-    id: 'docs',
-    label: 'Matrícula / Documentación (Opcional)',
-    guide: 'Si lo deseas, fotografía la ficha técnica o permiso para verificar versión exacta.',
-    iconName: 'FileText'
   }
 ];
 

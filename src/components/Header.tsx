@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, ShieldCheck, BookmarkCheck, BookOpen, Compass, MessageSquare } from 'lucide-react';
+import { Car, ShieldCheck, BookmarkCheck, BookOpen, Compass, MessageSquare, Scale } from 'lucide-react';
 
 interface HeaderProps {
   currentView: string;
@@ -63,6 +63,18 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, savedCo
                 {savedCount}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => onNavigate('compare')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+              currentView === 'compare'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Scale className="w-3.5 h-3.5" />
+            Comparar
           </button>
 
           <button

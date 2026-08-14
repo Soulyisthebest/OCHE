@@ -3,39 +3,114 @@ import { BookOpen, Search, ShieldAlert, Cpu, FileText, Lightbulb, ChevronRight, 
 
 const ARTICLES = [
   {
-    id: 'scams',
-    title: 'Los 5 trucos habituales para ocultar fallos en un coche usado',
-    category: 'Consejos de Compra',
-    readTime: '3 min',
-    summary: 'Aprende a detectar si el motor fue calentado antes de tu llegada o si borraron los fallos del cuadro.',
-    content: `1. Calentar el coche antes de la visita: Muchos vendedores arrancan el motor 15 minutos antes para evitar el traqueteo característico de la cadena de distribución en frío o el humo inicial.
-2. Borrar códigos de avería OBD-II justo antes: Un testigo de fallo de motor apagado puede volver a encenderse tras recorrer 20 o 30 kilómetros.
-3. Usar aditivos espesantes de aceite: Minimizan temporalmente el humo azul de consumo de aceite y suavizan ruidos de taqués.
-4. Lavar / petrolear el motor: Un vano motor brillante impide ver fugas activas de aceite o anticongelante.
-5. Disimular el desgaste con abrillantador de plásticos: Cubre el desgaste del volante y pomo para dar apariencia de menos kilometraje.`
-  },
-  {
-    id: 'dictionary',
-    title: 'Diccionario mecánico para principiantes',
-    category: 'Glosario',
-    readTime: '4 min',
-    summary: 'Explicación en lenguaje sencillo de las siglas más temidas al comprar un coche.',
-    content: `• EGR (Válvula de Recirculación de Gases): Reintroduce parte de los gases de escape al motor para contaminar menos. En ciudad se llena de carbonilla y causa tirones.
-• DPF / FAP (Filtro de Partículas): Retiene el hollín en los motores diésel. Si no sale a carretera a limpiarse (regenerar), se satura y cuesta entre 600€ y 1.200€.
-• Volante Bimasa: Pieza entre el motor y el embrague que absorbe vibraciones. Si suena un "clac-clac" metálico en ralentí, está gastado.
-• Correa de Distribución: Correa de goma que sincroniza el motor. Si rompe en marcha, destruye el motor. Debe cambiarse por tiempo o kilómetros.
-• Silentblocks: Tacos de goma que sujetan la suspensión y el motor para amortiguar vibraciones.`
-  },
-  {
-    id: 'itv',
-    title: 'Trámites legales e informe DGT antes de pagar',
-    category: 'Documentación',
+    id: 'aceite',
+    title: '1. Aceite del Motor y Filtros',
+    category: 'Mantenimiento',
     readTime: '2 min',
-    summary: 'Pasos para comprobar que el coche no tiene embargos, reservas de dominio ni manipulaciones de km.',
-    content: `Antes de entregar cualquier señal o reserva:
-1. Pide el Informe Completo de la DGT (~8,50 €): Comprueba si tiene cargas de reserva de dominio, embargos o precintos.
-2. Revisa la Ficha Técnica e historial de ITV: Comprueba la evolución real de kilómetros anotados en cada inspección.
-3. Contrato de compraventa entre particulares: Especifica siempre fecha, hora exacta de entrega y kilometraje en el contrato.`
+    summary: 'El lubricante vital que evita que los metales del motor rocen entre sí y se fundan.',
+    content: `• QUÉ ES: Fluido sintético o mineral de viscosidad controlada.
+• PARA QUÉ SIRVE: Lubrica, enfría y limpia los componentes internos en movimiento (pistones, cigüeñal, árbol de levas).
+• QUÉ PASA SI FALLA: Sin aceite o con aceite muy degradado, la fricción genera calor extremo y el motor se gripa (se destruye).
+• CUÁNTO PUEDE COSTAR: Cambio de aceite y filtro: 80 € – 180 €. Reparar motor gripado: 2.500 € – 6.000 €.`
+  },
+  {
+    id: 'frenos',
+    title: '2. Discos y Pastillas de Freno',
+    category: 'Seguridad',
+    readTime: '2 min',
+    summary: 'El sistema hidráulico de fricción que detiene el vehículo de forma segura.',
+    content: `• QUÉ ES: Pastillas de fricción compuestas que presionan contra discos metálicos solidarios a la rueda.
+• PARA QUÉ SIRVE: Convertir la energía cinética del coche en calor mediante fricción para detenerlo rápidamente.
+• QUÉ PASA SI FALLA: Si se desgastan en exceso, el coche pierde eficacia de frenado, raya los discos o alarga la distancia de parada.
+• CUÁNTO PUEDE COSTAR: Pastillas delanteras: 60 € – 120 €. Discos y pastillas completos: 220 € – 450 €.`
+  },
+  {
+    id: 'embrague',
+    title: '3. Sistema de Embrague y Bimasa',
+    category: 'Transmisión',
+    readTime: '3 min',
+    summary: 'El mecanismo de acoplamiento entre el motor y la caja de cambios manual.',
+    content: `• QUÉ ES: Disco de fricción acoplado a un volante de inercia bimasa que absorbe vibraciones.
+• PARA QUÉ SIRVE: Desconectar el motor de las ruedas para cambiar de marcha o detenerse sin calar el motor.
+• QUÉ PASA SI FALLA: El embrague "patina" (el motor acelera pero el coche no coge velocidad) o genera vibraciones violentas al arrancar.
+• CUÁNTO PUEDE COSTAR: Kit de embrague simple: 400 € – 700 €. Kit de embrague + Volante Bimasa: 800 € – 1.400 €.`
+  },
+  {
+    id: 'distribucion',
+    title: '4. Correa o Cadena de Distribución',
+    category: 'Motor',
+    readTime: '3 min',
+    summary: 'El corazón de la sincronización del motor.',
+    content: `• QUÉ ES: Correa dentada de caucho o cadena metálica articulada.
+• PARA QUÉ SIRVE: Sincronizar el movimiento del cigüeñal con el árbol de levas para abrir y cerrar válvulas a tiempo.
+• QUÉ PASA SI FALLA: Si la correa se rompe en marcha, los pistones destruyen las válvulas de la culata.
+• CUÁNTO PUEDE COSTAR: Kit de distribución preventivo + bomba de agua: 350 € – 650 €. Rotura de motor: >3.000 €.`
+  },
+  {
+    id: 'turbo',
+    title: '5. Turbocompresor',
+    category: 'Motor',
+    readTime: '2 min',
+    summary: 'La turbina que sobrealimenta de aire a presión los cilindros.',
+    content: `• QUÉ ES: Turbina accionada por los gases de escape que impulsa aire a presión a la admisión.
+• PARA QUÉ SIRVE: Aumentar la potencia del motor con menor cilindrada y consumo.
+• QUÉ PASA SI FALLA: Pérdida total de potencia, silbido agudo (ruido a ambulancia) o humo azul/blanco por consumo de aceite.
+• CUÁNTO PUEDE COSTAR: Reconstruir o sustituir turbo: 600 € – 1.300 €.`
+  },
+  {
+    id: 'dpf',
+    title: '6. Filtro de Partículas (DPF / FAP)',
+    category: 'Anticontaminación',
+    readTime: '2 min',
+    summary: 'El trampa de hollín para motores diésel modernos.',
+    content: `• QUÉ ES: Cerámica porosa situada en el tubo de escape.
+• PARA QUÉ SIRVE: Capturar las partículas nocivas de hollín e incinerarlas en trayectos de carretera (regeneración).
+• QUÉ PASA SI FALLA: En uso puramente urbano se satura de carbonilla, el coche entra en modo de emergencia y no acelera.
+• CUÁNTO PUEDE COSTAR: Limpieza profesional: 150 € – 300 €. Sustitución completa: 700 € – 1.500 €.`
+  },
+  {
+    id: 'egr',
+    title: '7. Válvula EGR',
+    category: 'Anticontaminación',
+    readTime: '2 min',
+    summary: 'Sistemas de recirculación de gases de escape.',
+    content: `• QUÉ ES: Válvula electromecánica que conecta el escape con la admisión.
+• PARA QUÉ SIRVE: Reintroducir gases quemados para bajar la temperatura de combustión y reducir óxidos de nitrógeno (NOx).
+• QUÉ PASA SI FALLA: Tirones a bajas revoluciones, falta de empuje y testigo de avería de motor encendido.
+• CUÁNTO PUEDE COSTAR: Limpieza: 80 € – 150 €. Sustitución de válvula EGR: 200 € – 450 €.`
+  },
+  {
+    id: 'bateria',
+    title: '8. Batería y Alternador',
+    category: 'Electricidad',
+    readTime: '2 min',
+    summary: 'El corazón del suministro eléctrico del coche.',
+    content: `• QUÉ ES: Acumulador de 12V e intercambiador generador de corriente continua.
+• PARA QUÉ SIRVE: Arrancar el motor y alimentar los sistemas electrónicos (lucres, radio, sensores).
+• QUÉ PASA SI FALLA: El coche no arranca o se apaga en marcha con aviso de fallo eléctrico en el cuadro.
+• CUÁNTO PUEDE COSTAR: Batería estándar / AGM: 80 € – 180 €. Alternador nuevo: 250 € – 500 €.`
+  },
+  {
+    id: 'neumaticos',
+    title: '9. Neumáticos',
+    category: 'Seguridad',
+    readTime: '2 min',
+    summary: 'El único punto de contacto real del vehículo con el suelo.',
+    content: `• QUÉ ES: Cubiertas de goma con compuesto de sílice y carcasa de acero.
+• PARA QUÉ SIRVE: Transmitir la tracción, frenada y agarre en curva en cualquier estado del firme.
+• QUÉ PASA SI FALLA: Desgaste desigual, grietas por vejez o aquaplaning con lluvia.
+• CUÁNTO PUEDE COSTAR: Pareja de neumáticos calidad media: 140 € – 280 €.`
+  },
+  {
+    id: 'suspension',
+    title: '10. Amortiguadores y Mueles',
+    category: 'Chasis',
+    readTime: '2 min',
+    summary: 'El sistema que mantiene las ruedas pegadas al asfalto.',
+    content: `• QUÉ ES: Cilindros hidráulicos o de gas asistidos por muelles helicoidales.
+• PARA QUÉ SIRVE: Absorber las irregularidades del firme y evitar que la carrocería balancee.
+• QUÉ PASA SI FALLA: Rebotar excesivo en badenes, inestabilidad con viento lateral y mayor distancia de frenado.
+• CUÁNTO PUEDE COSTAR: Pareja de amortiguadores delanteros/traseros: 250 € – 550 €.`
   }
 ];
 

@@ -180,69 +180,66 @@ export const Car3DExplorer: React.FC = () => {
 
           {/* Selected Part Detail Drawer */}
           {selectedPart && (
-            <div className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 shadow-2xl relative animate-fade-in">
-              <span className="text-[10px] font-bold text-purple-400 bg-purple-950 px-2.5 py-0.5 rounded-full border border-purple-800 uppercase tracking-wider block w-max mb-2">
-                DETALLE DE PIEZA
+            <div className="bg-[#16161D] border border-purple-500/30 rounded-3xl p-6 shadow-2xl relative animate-fade-in space-y-3">
+              <span className="text-[10px] font-black text-purple-400 bg-purple-950 px-3 py-1 rounded-full border border-purple-800 uppercase tracking-wider inline-block">
+                FICHA TÉCNICA DE PIEZA
               </span>
 
-              <h2 className="text-xl font-black text-white mb-2">
+              <h2 className="text-xl font-black text-white uppercase italic tracking-tight">
                 {selectedPart.name}
               </h2>
 
-              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 mb-4">
-                <span className="text-[11px] font-bold text-slate-400 block mb-1">
-                  ¿Qué hace?
-                </span>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  {selectedPart.description}
-                </p>
-              </div>
-
-              {/* Price Table */}
-              <div className="space-y-2 text-xs mb-4">
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-slate-400 font-medium">💰 Nueva:</span>
-                  <span className="font-mono font-bold text-emerald-400">
-                    {selectedPart.priceNew || 'Precio no disponible'}
+              <div className="space-y-2 text-xs">
+                <div className="bg-black/60 p-3 rounded-2xl border border-white/5">
+                  <span className="text-[10px] font-black text-purple-400 block uppercase mb-0.5">
+                    📍 Ubicación & Función:
                   </span>
+                  <p className="text-white/80 font-bold leading-relaxed">
+                    {selectedPart.description || selectedPart.whatItDoes || 'No disponible'}
+                  </p>
                 </div>
 
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-slate-400 font-medium">♻️ Reacondicionada:</span>
-                  <span className="font-mono font-bold text-cyan-300">
-                    {selectedPart.priceRefurbished || 'Precio no disponible'}
+                <div className="bg-black/60 p-3 rounded-2xl border border-white/5">
+                  <span className="text-[10px] font-black text-amber-400 block uppercase mb-0.5">
+                    ⚠️ ¿Qué puede fallar y síntomas?
                   </span>
+                  <p className="text-white/80 font-bold leading-relaxed">
+                    {selectedPart.whatCanFail || selectedPart.commonIssues.join(', ') || 'No disponible'}
+                  </p>
                 </div>
 
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-slate-400 font-medium">♻️ Segunda mano:</span>
-                  <span className="font-mono font-bold text-slate-300">
-                    {selectedPart.priceUsed || 'No recomendado'}
+                <div className="bg-black/60 p-3 rounded-2xl border border-white/5">
+                  <span className="text-[10px] font-black text-blue-400 block uppercase mb-0.5">
+                    🛠️ Mantenimiento preventivo:
                   </span>
-                </div>
-
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-slate-400 font-medium">🔧 Mano de obra:</span>
-                  <span className="font-mono font-bold text-purple-300">
-                    {selectedPart.laborCost || '60 € – 120 €'}
-                  </span>
+                  <p className="text-white/80 font-bold leading-relaxed">
+                    {selectedPart.maintenance || 'Inspección visual regular según programa de mantenimiento.'}
+                  </p>
                 </div>
               </div>
 
-              {/* Common Issues */}
-              {selectedPart.commonIssues.length > 0 && (
-                <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
-                  <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1 mb-2">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    Averías o síntomas habituales:
-                  </span>
-                  <ul className="space-y-1 text-xs text-slate-300 list-disc list-inside">
-                    {selectedPart.commonIssues.map((issue, idx) => (
-                      <li key={idx}>{issue}</li>
-                    ))}
-                  </ul>
+              {/* Price Breakdown */}
+              <div className="grid grid-cols-2 gap-2 text-xs font-bold pt-2">
+                <div className="p-2.5 rounded-xl bg-black border border-white/10">
+                  <span className="text-white/40 text-[9px] uppercase block">Precio Pieza Nueva</span>
+                  <span className="text-emerald-400 font-black">{selectedPart.priceNew || 'No disponible'}</span>
                 </div>
-              )}
+
+                <div className="p-2.5 rounded-xl bg-black border border-white/10">
+                  <span className="text-white/40 text-[9px] uppercase block">Precio Pieza Usada</span>
+                  <span className="text-amber-400 font-black">{selectedPart.priceUsed || 'No disponible'}</span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-black border border-white/10">
+                  <span className="text-white/40 text-[9px] uppercase block">Mano de Obra</span>
+                  <span className="text-purple-400 font-black">{selectedPart.laborCost || 'No disponible'}</span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-black border border-purple-500/40">
+                  <span className="text-purple-400 text-[9px] uppercase block">Coste Total Est.</span>
+                  <span className="text-white font-black">{selectedPart.totalCost || 'No disponible'}</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
