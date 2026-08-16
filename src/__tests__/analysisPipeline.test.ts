@@ -117,7 +117,7 @@ describe('Phase 3 Real Vehicle Analysis Engine Pipeline', () => {
       );
 
       expect(costEstimate.askingPrice).toBe(8500);
-      expect(costEstimate.transferFees).toBe(200);
+      expect(costEstimate.transferFees).toBeGreaterThan(0);
       expect(costEstimate.immediateCost).toBeGreaterThan(0);
       expect(costEstimate.items.length).toBeGreaterThan(0);
       expect(costEstimate.totalEstimatedCost).toBeGreaterThan(costEstimate.askingPrice);

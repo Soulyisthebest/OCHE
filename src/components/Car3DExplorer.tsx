@@ -1,249 +1,366 @@
-import React, { useState } from 'react';
-import { Compass, RotateCw, ZoomIn, ZoomOut, Cpu, Disc, Activity, Settings, Zap, CircleDot, ChevronRight, Info, AlertTriangle, Euro } from 'lucide-react';
-import { CAR_ZONES_3D } from '../data/car3DData';
-import { CarZone3D, CarPartInfo } from '../types';
+/**
+ * OCHE / CARCHECK AI — Interactive 3D Vehicle Knowledge System (FASE 7)
+ * Comprehensive visual knowledge explorer connecting 3D Parts, Vehicle Knowledge,
+ * Symptom Diagnostics, Inspection Guides, and dynamic Country-based Cost Engines.
+ */
 
-export const Car3DExplorer: React.FC = () => {
-  const [selectedZone, setSelectedZone] = useState<CarZone3D>(CAR_ZONES_3D[0]);
-  const [selectedPart, setSelectedPart] = useState<CarPartInfo | null>(CAR_ZONES_3D[0].parts[0]);
-  const [rotationAngle, setRotationAngle] = useState<number>(0);
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
+import React, { useState, useEffect } from 'react';
+import {
+  Compass,
+  Layers,
+  Activity,
+  List,
+  Box,
+  Wrench,
+  Search,
+  Sparkles,
+  Info,
+  Car,
+  ChevronDown,
+  Globe
+} from 'lucide-react';
+import {
+  Car3DModel,
+  Car3DPart,
+  Car3DZone,
+  PartKnowledgeCard,
+  CameraPresetId,
+  ObservationEvidenceItem
+} from '../types/vehicle3D';
+import { StandardSystemType } from '../types/vehicleKnowledge';
+import { CarAnalysisReport } from '../types';
+import { VehicleAnalysisSession } from '../types/analysisSession';
+import { CountryEngine } from '../services/CountryEngine';
+import { Vehicle3DService } from '../services/Vehicle3DService';
+import { Car3DCanvas } from './3d/Car3DCanvas';
+import { PartDetailDrawer } from './3d/PartDetailDrawer';
+import { SymptomExplorerModal } from './3d/SymptomExplorerModal';
+import { AccessibilityPartsList } from './3d/AccessibilityPartsList';
 
-  const handleRotate = () => {
-    setRotationAngle((prev) => (prev + 45) % 360);
+interface Car3DExplorerProps {
+  report?: CarAnalysisReport | null;
+  session?: VehicleAnalysisSession | null;
+  onNavigateToChat?: (initialPrompt?: string) => void;
+  onNavigateToReport?: () => void;
+}
+
+export const Car3DExplorer: React.FC<Car3DExplorerProps> = ({
+  report,
+  session,
+  onNavigateToChat,
+  onNavigateToReport
+}) => {
+  // Available models
+  const allModels = Vehicle3DService.getAllModels();
+
+  // Selected 3D Model (defaults to matching report vehicle or first canonical)
+  const initialModel = Vehicle3DService.getModelForVehicle({
+    make: report?.identity.make,
+    model: report?.identity.model,
+    engine: report?.identity.engine
+  });
+
+  const [selectedModel, setSelectedModel] = useState<Car3DModel>(initialModel);
+  const [selectedZone, setSelectedZone] = useState<Car3DZone | null>(initialModel.zones[0] || null);
+  const [selectedPart, setSelectedPart] = useState<Car3DPart | null>(initialModel.parts[0] || null);
+  const [activeSystemFilter, setActiveSystemFilter] = useState<StandardSystemType | 'ALL'>('ALL');
+  const [isExplodedView, setIsExplodedView] = useState<boolean>(false);
+  const [activeCameraPreset, setActiveCameraPreset] = useState<CameraPresetId>('FULL_CAR');
+  const [viewMode, setViewMode] = useState<'3D' | '2D_LIST'>('3D');
+  const [isSymptomModalOpen, setIsSymptomModalOpen] = useState<boolean>(false);
+
+  // Knowledge Card state
+  const [card, setCard] = useState<PartKnowledgeCard | null>(null);
+  const [isCardLoading, setIsCardLoading] = useState<boolean>(false);
+
+  // Map of scan observations
+  const [evidenceMap, setEvidenceMap] = useState<Record<string, ObservationEvidenceItem>>({});
+
+  // Active country code
+  const activeCountry = CountryEngine.getActiveCountryCode() || 'ES';
+
+  // Synchronize observations from report
+  useEffect(() => {
+    const evMap = Vehicle3DService.mapReportEvidenceTo3DParts(selectedModel, report, session);
+    setEvidenceMap(evMap);
+  }, [selectedModel, report, session]);
+
+  // Load Part Knowledge Card whenever selected part or country changes
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCard() {
+      if (!selectedPart) {
+        setCard(null);
+        return;
+      }
+      setIsCardLoading(true);
+      try {
+        const generatedCard = await Vehicle3DService.getPartKnowledgeCard(
+          selectedPart.partId,
+          selectedModel,
+          activeCountry,
+          report,
+          session
+        );
+        if (!isCancelled) {
+          setCard(generatedCard);
+        }
+      } catch (err) {
+        console.error('Error loading part knowledge card:', err);
+      } finally {
+        if (!isCancelled) {
+          setIsCardLoading(false);
+        }
+      }
+    }
+
+    loadCard();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedPart, selectedModel, activeCountry, report, session]);
+
+  // Handle Model Change
+  const handleModelChange = (modelId: string) => {
+    const newModel = Vehicle3DService.getModelById(modelId);
+    setSelectedModel(newModel);
+    setSelectedZone(newModel.zones[0] || null);
+    setSelectedPart(newModel.parts[0] || null);
+    setActiveCameraPreset('FULL_CAR');
+    setIsExplodedView(false);
   };
 
-  const handleZoomIn = () => {
-    setZoomLevel((prev) => Math.min(prev + 0.2, 1.6));
+  // Handle Part Selection
+  const handleSelectPart = (part: Car3DPart) => {
+    setSelectedPart(part);
+    const matchingZone = selectedModel.zones.find((z) => z.id === part.zoneId);
+    if (matchingZone) {
+      setSelectedZone(matchingZone);
+      setActiveCameraPreset(matchingZone.cameraPreset);
+    }
   };
 
-  const handleZoomOut = () => {
-    setZoomLevel((prev) => Math.max(prev - 0.2, 0.8));
+  // Handle Ask OCHE button
+  const handleAskOche = (knowledgeCard: PartKnowledgeCard) => {
+    const vehicleName = `${selectedModel.make} ${selectedModel.model} (${selectedModel.engine})`;
+    const chatContext = Vehicle3DService.generateChatContext(knowledgeCard, vehicleName);
+    if (onNavigateToChat) {
+      onNavigateToChat(chatContext.initialPrompt);
+    }
   };
+
+  // Vehicle display name
+  const vehicleDisplayName = `${selectedModel.make} ${selectedModel.model} ${selectedModel.engine}`;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#0A0A0C] text-white p-4 sm:p-6 max-w-6xl mx-auto">
-      {/* Title */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+    <div className="min-h-[calc(100vh-4rem)] bg-[#0A0A0D] text-white p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      {/* Top Header Section */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-xs font-black text-blue-400 uppercase tracking-widest mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-xs font-black text-blue-400 uppercase tracking-widest mb-2 border border-blue-500/30">
             <Compass className="w-4 h-4" />
-            <span>EXPLORADOR TÉCNICO INTERACTIVO 3D</span>
+            <span>INTERACTIVE 3D VEHICLE KNOWLEDGE SYSTEM</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter uppercase italic">
-            Conoce Tu Coche
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tighter uppercase italic">
+            Explorador Técnico OCHE
           </h1>
-          <p className="text-xs text-white/50 font-bold uppercase tracking-wider">
-            Toca las zonas clave del coche para entender qué hace cada pieza y cuánto cuesta reparar.
+          <p className="text-xs text-white/50 font-bold uppercase tracking-wider mt-0.5">
+            Explora la anatomía mecánica, diagnósticos y costes reales pieza por pieza
           </p>
         </div>
 
-        {/* 3D Viewport Controls */}
-        <div className="flex items-center gap-2 bg-[#16161D] p-1.5 rounded-2xl border border-white/10">
+        {/* Global Action Controls: Symptom Search + Model Selector + 2D/3D Mode */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Symptom Explorer Button */}
           <button
-            onClick={handleRotate}
-            className="p-2.5 rounded-xl bg-black hover:bg-white/10 text-white/80 hover:text-white transition-colors text-xs font-black uppercase flex items-center gap-1.5 cursor-pointer"
-            title="Girar modelo 3D"
+            onClick={() => setIsSymptomModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+            id="btn-symptom-explorer"
           >
-            <RotateCw className="w-4 h-4 text-blue-400" />
-            Girar 360º
+            <Activity className="w-4 h-4 text-amber-400" />
+            <span>Buscador de Síntomas</span>
           </button>
+
+          {/* Exploded View Toggle */}
           <button
-            onClick={handleZoomIn}
-            className="p-2.5 rounded-xl bg-black hover:bg-white/10 text-white/80 transition-colors cursor-pointer"
-            title="Acercar zoom"
+            onClick={() => setIsExplodedView((prev) => !prev)}
+            className={`px-3.5 py-2.5 rounded-2xl border text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+              isExplodedView
+                ? 'bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-500/20'
+                : 'bg-black/60 text-white/60 border-white/10 hover:text-white hover:bg-white/10'
+            }`}
+            id="btn-exploded-view"
+            title="Separar componentes mecánicos en capas"
           >
-            <ZoomIn className="w-4 h-4" />
+            <Layers className="w-4 h-4" />
+            <span>Despiece</span>
           </button>
-          <button
-            onClick={handleZoomOut}
-            className="p-2.5 rounded-xl bg-black hover:bg-white/10 text-white/80 transition-colors cursor-pointer"
-            title="Alejar zoom"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
+
+          {/* 3D vs 2D List Mode Toggle */}
+          <div className="flex items-center p-1 bg-black/60 border border-white/10 rounded-2xl">
+            <button
+              onClick={() => setViewMode('3D')}
+              className={`p-2 rounded-xl text-xs font-black uppercase transition-all cursor-pointer ${
+                viewMode === '3D' ? 'bg-blue-600 text-white shadow-md' : 'text-white/50 hover:text-white'
+              }`}
+              title="Vista 3D Interactiva"
+            >
+              <Box className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('2D_LIST')}
+              className={`p-2 rounded-xl text-xs font-black uppercase transition-all cursor-pointer ${
+                viewMode === '2D_LIST' ? 'bg-blue-600 text-white shadow-md' : 'text-white/50 hover:text-white'
+              }`}
+              title="Vista de Lista Accesible"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Model Selector Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedModel.id}
+              onChange={(e) => handleModelChange(e.target.value)}
+              className="appearance-none bg-black/80 text-white text-xs font-black uppercase tracking-wider py-2.5 pl-3 pr-8 rounded-2xl border border-white/15 focus:outline-none focus:border-blue-500 cursor-pointer"
+            >
+              {allModels.map((m) => (
+                <option key={m.id} value={m.id} className="bg-[#16161D] text-white">
+                  {m.make} {m.model} ({m.engine})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-white/40 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Interactive 3D Canvas Viewport (7 cols) */}
-        <div className="lg:col-span-7 bg-[#16161D] border border-white/10 rounded-[32px] p-6 shadow-2xl relative min-h-[380px] flex flex-col justify-between overflow-hidden">
-          {/* Background Grid */}
-          <div className="absolute inset-0 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px] opacity-10 pointer-events-none" />
+      {/* System Filters Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest mr-1 flex-shrink-0">
+          Sistemas:
+        </span>
+        {(['ALL', 'ENGINE', 'COOLING', 'TRANSMISSION', 'BRAKES', 'SUSPENSION', 'EXHAUST', 'ELECTRICAL'] as const).map(
+          (sys) => {
+            const isActive = activeSystemFilter === sys;
+            return (
+              <button
+                key={sys}
+                onClick={() => setActiveSystemFilter(sys)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border whitespace-nowrap cursor-pointer ${
+                  isActive
+                    ? 'bg-blue-600 text-white border-blue-400 shadow-md'
+                    : 'bg-black/60 text-white/60 border-white/10 hover:text-white hover:bg-white/10'
+                }`}
+                id={`filter-sys-${sys}`}
+              >
+                {sys === 'ALL'
+                  ? 'Todos'
+                  : sys === 'ENGINE'
+                  ? 'Motor'
+                  : sys === 'COOLING'
+                  ? 'Refrigeración'
+                  : sys === 'TRANSMISSION'
+                  ? 'Transmisión'
+                  : sys === 'BRAKES'
+                  ? 'Frenos'
+                  : sys === 'SUSPENSION'
+                  ? 'Suspensión'
+                  : sys === 'EXHAUST'
+                  ? 'Escape/FAP'
+                  : 'Eléctrico'}
+              </button>
+            );
+          }
+        )}
+      </div>
 
-          {/* Top Zone Switcher Badges */}
-          <div className="relative z-10 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {CAR_ZONES_3D.map((zone) => {
-              const isSelected = selectedZone.id === zone.id;
+      {/* Main Grid: 3D Stage / 2D List (Left 7 cols) & Deep Part Knowledge Drawer (Right 5 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (7 cols) */}
+        <div className="lg:col-span-7 space-y-4">
+          {viewMode === '3D' ? (
+            <Car3DCanvas
+              model={selectedModel}
+              selectedZone={selectedZone}
+              selectedPart={selectedPart}
+              activeSystemFilter={activeSystemFilter}
+              isExplodedView={isExplodedView}
+              activeCameraPreset={activeCameraPreset}
+              evidenceMap={evidenceMap}
+              onSelectPart={handleSelectPart}
+              onSelectZone={(z) => {
+                setSelectedZone(z);
+                setActiveCameraPreset(z.cameraPreset);
+              }}
+              onCameraPresetChange={setActiveCameraPreset}
+            />
+          ) : (
+            <AccessibilityPartsList
+              model={selectedModel}
+              selectedPart={selectedPart}
+              activeSystemFilter={activeSystemFilter}
+              evidenceMap={evidenceMap}
+              onSelectPart={handleSelectPart}
+              onSystemFilterChange={setActiveSystemFilter}
+            />
+          )}
+
+          {/* Quick Zone Navigation Pills */}
+          <div className="flex flex-wrap items-center gap-2 p-3 rounded-2xl bg-black/40 border border-white/5">
+            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest mr-1">
+              Zonas:
+            </span>
+            {selectedModel.zones.map((zone) => {
+              const isZoneSelected = selectedZone?.id === zone.id;
               return (
                 <button
                   key={zone.id}
                   onClick={() => {
                     setSelectedZone(zone);
-                    setSelectedPart(zone.parts[0] || null);
+                    setActiveCameraPreset(zone.cameraPreset);
+                    const firstPartInZone = selectedModel.parts.find((p) => p.zoneId === zone.id);
+                    if (firstPartInZone) setSelectedPart(firstPartInZone);
                   }}
-                  className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border cursor-pointer ${
-                    isSelected
-                      ? 'bg-blue-600 text-white border-blue-400 shadow-lg'
-                      : 'bg-black/80 text-white/50 border-white/10 hover:text-white'
+                  className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all border cursor-pointer ${
+                    isZoneSelected
+                      ? 'bg-white/20 text-white border-white/40'
+                      : 'bg-white/5 text-white/50 border-white/10 hover:text-white'
                   }`}
+                  id={`zone-btn-${zone.id}`}
                 >
-                  <span>{zone.name}</span>
+                  {zone.name}
                 </button>
               );
             })}
           </div>
-
-          {/* Interactive Car Vector Graphic Stage */}
-          <div className="relative w-full h-64 my-4 flex items-center justify-center">
-            <div
-              className="relative transition-all duration-500 ease-out flex items-center justify-center w-full max-w-md"
-              style={{
-                transform: `rotate(${rotationAngle}deg) scale(${zoomLevel})`
-              }}
-            >
-              <img
-                src="https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=800&q=80"
-                alt="3D Car View"
-                className="w-full h-44 object-cover rounded-2xl opacity-75 shadow-2xl border border-purple-500/30"
-              />
-
-              {/* Interactive Hotspot Buttons on Canvas */}
-              {CAR_ZONES_3D.map((zone) => {
-                const isSelected = selectedZone.id === zone.id;
-                return (
-                  <button
-                    key={zone.id}
-                    onClick={() => {
-                      setSelectedZone(zone);
-                      setSelectedPart(zone.parts[0] || null);
-                    }}
-                    className={`absolute p-2 rounded-full border-2 transition-all transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-xl ${
-                      isSelected
-                        ? 'bg-purple-500 border-white text-white scale-125 z-20 animate-pulse'
-                        : 'bg-slate-950/90 border-slate-700 text-slate-300 hover:border-purple-400 hover:scale-110'
-                    }`}
-                    style={{ left: `${zone.x}%`, top: `${zone.y}%` }}
-                    title={zone.name}
-                  >
-                    <div className="w-2.5 h-2.5 rounded-full bg-current" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Active Zone Summary Bar */}
-          <div className="relative z-10 bg-slate-950/90 border border-slate-800 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-bold text-purple-400">
-                ZONA SELECCIONADA:
-              </span>
-              <span className="text-xs font-extrabold text-white">
-                {selectedZone.name}
-              </span>
-            </div>
-            <p className="text-xs text-slate-300">
-              {selectedZone.summary}
-            </p>
-          </div>
         </div>
 
-        {/* Component Parts List & Price Detail Card (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          {/* List of Parts in Zone */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl">
-            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-3">
-              🔧 PIEZAS DE ESTA ZONA ({selectedZone.parts.length})
-            </h3>
-
-            <div className="space-y-2">
-              {selectedZone.parts.map((part) => {
-                const isPartSelected = selectedPart?.id === part.id;
-                return (
-                  <button
-                    key={part.id}
-                    onClick={() => setSelectedPart(part)}
-                    className={`w-full p-3 rounded-2xl text-xs font-bold text-left transition-all border flex items-center justify-between cursor-pointer ${
-                      isPartSelected
-                        ? 'bg-purple-950/60 border-purple-500 text-purple-200 shadow-md'
-                        : 'bg-slate-950 border-slate-850 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <span>{part.name}</span>
-                    <ChevronRight className={`w-4 h-4 ${isPartSelected ? 'text-purple-400' : 'text-slate-600'}`} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Selected Part Detail Drawer */}
-          {selectedPart && (
-            <div className="bg-[#16161D] border border-purple-500/30 rounded-3xl p-6 shadow-2xl relative animate-fade-in space-y-3">
-              <span className="text-[10px] font-black text-purple-400 bg-purple-950 px-3 py-1 rounded-full border border-purple-800 uppercase tracking-wider inline-block">
-                FICHA TÉCNICA DE PIEZA
-              </span>
-
-              <h2 className="text-xl font-black text-white uppercase italic tracking-tight">
-                {selectedPart.name}
-              </h2>
-
-              <div className="space-y-2 text-xs">
-                <div className="bg-black/60 p-3 rounded-2xl border border-white/5">
-                  <span className="text-[10px] font-black text-purple-400 block uppercase mb-0.5">
-                    📍 Ubicación & Función:
-                  </span>
-                  <p className="text-white/80 font-bold leading-relaxed">
-                    {selectedPart.description || selectedPart.whatItDoes || 'No disponible'}
-                  </p>
-                </div>
-
-                <div className="bg-black/60 p-3 rounded-2xl border border-white/5">
-                  <span className="text-[10px] font-black text-amber-400 block uppercase mb-0.5">
-                    ⚠️ ¿Qué puede fallar y síntomas?
-                  </span>
-                  <p className="text-white/80 font-bold leading-relaxed">
-                    {selectedPart.whatCanFail || selectedPart.commonIssues.join(', ') || 'No disponible'}
-                  </p>
-                </div>
-
-                <div className="bg-black/60 p-3 rounded-2xl border border-white/5">
-                  <span className="text-[10px] font-black text-blue-400 block uppercase mb-0.5">
-                    🛠️ Mantenimiento preventivo:
-                  </span>
-                  <p className="text-white/80 font-bold leading-relaxed">
-                    {selectedPart.maintenance || 'Inspección visual regular según programa de mantenimiento.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Price Breakdown */}
-              <div className="grid grid-cols-2 gap-2 text-xs font-bold pt-2">
-                <div className="p-2.5 rounded-xl bg-black border border-white/10">
-                  <span className="text-white/40 text-[9px] uppercase block">Precio Pieza Nueva</span>
-                  <span className="text-emerald-400 font-black">{selectedPart.priceNew || 'No disponible'}</span>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-black border border-white/10">
-                  <span className="text-white/40 text-[9px] uppercase block">Precio Pieza Usada</span>
-                  <span className="text-amber-400 font-black">{selectedPart.priceUsed || 'No disponible'}</span>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-black border border-white/10">
-                  <span className="text-white/40 text-[9px] uppercase block">Mano de Obra</span>
-                  <span className="text-purple-400 font-black">{selectedPart.laborCost || 'No disponible'}</span>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-black border border-purple-500/40">
-                  <span className="text-purple-400 text-[9px] uppercase block">Coste Total Est.</span>
-                  <span className="text-white font-black">{selectedPart.totalCost || 'No disponible'}</span>
-                </div>
-              </div>
-            </div>
-          )}
+        {/* Right Column: Deep Part Knowledge Card & Actions (5 cols) */}
+        <div className="lg:col-span-5">
+          <PartDetailDrawer
+            card={card}
+            isLoading={isCardLoading}
+            vehicleName={vehicleDisplayName}
+            hasScanObservation={card?.observationStatus === 'OBSERVED'}
+            onAskOche={handleAskOche}
+            onViewInReport={onNavigateToReport}
+          />
         </div>
       </div>
+
+      {/* Symptom Explorer Modal */}
+      <SymptomExplorerModal
+        isOpen={isSymptomModalOpen}
+        onClose={() => setIsSymptomModalOpen(false)}
+        onSelectSystemFilter={(sysId) => {
+          setActiveSystemFilter(sysId);
+          setViewMode('3D');
+        }}
+      />
     </div>
   );
 };

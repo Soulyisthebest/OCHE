@@ -4,16 +4,150 @@ import { SampleDemoCar, SAMPLE_DEMO_CARS } from '../data/sampleCars';
 import { VEHICLE_KNOWLEDGE_BASE } from '../data/vehicleKnowledgeDatabase';
 import { CountryCode, MarketCode, VehicleMarketVersion } from '../types/country';
 import { COUNTRIES_DATA } from '../data/countries';
+import {
+  Brand,
+  VehicleModel,
+  VehicleGeneration,
+  Engine,
+  GlobalVehicleComposite,
+  MarketConfiguration,
+  VehicleSystem,
+  Part,
+  KnownProblem,
+  MaintenanceItem,
+  Repair,
+  StandardSystemType
+} from '../types/vehicleKnowledge';
+import {
+  GLOBAL_BRANDS,
+  GLOBAL_MODELS,
+  GLOBAL_GENERATIONS,
+  GLOBAL_ENGINES,
+  GLOBAL_KNOWN_PROBLEMS,
+  GLOBAL_PARTS,
+  GLOBAL_MAINTENANCE_ITEMS,
+  GLOBAL_REPAIRS,
+  GLOBAL_MARKET_CONFIGURATIONS,
+  CANONICAL_GLOBAL_VEHICLES,
+  STANDARD_VEHICLE_SYSTEMS_DEF
+} from '../data/globalVehicleDatabase';
+import {
+  VehicleResolverService,
+  PartialVehicleInput,
+  VehicleResolutionResult
+} from '../services/VehicleResolverService';
 
 /**
- * LocalVehicleRepository (FASE 4: Global Vehicle Platform)
- * Implements VehicleRepository for multi-market and multi-country querying.
+ * LocalVehicleRepository (FASE 5: Global Vehicle Knowledge Core)
+ * Implements VehicleRepository for multi-market, ontology-driven automotive knowledge querying.
  */
 export class LocalVehicleRepository implements VehicleRepository {
   private vehicles: Vehicle[] = VEHICLE_KNOWLEDGE_BASE;
   private demoCars: SampleDemoCar[] = SAMPLE_DEMO_CARS;
+  private globalVehicles: GlobalVehicleComposite[] = CANONICAL_GLOBAL_VEHICLES;
 
-  // Domain Vehicle Methods
+  // --- FASE 5: Global Knowledge Core Methods ---
+
+  async getBrands(): Promise<Brand[]> {
+    return Promise.resolve([...GLOBAL_BRANDS]);
+  }
+
+  async getBrandById(brandId: string): Promise<Brand | null> {
+    const brand = GLOBAL_BRANDS.find((b) => b.brandId === brandId) || null;
+    return Promise.resolve(brand);
+  }
+
+  async getModelsByBrand(brandId: string): Promise<VehicleModel[]> {
+    return Promise.resolve(GLOBAL_MODELS.filter((m) => m.brandId === brandId));
+  }
+
+  async getGenerationsByModel(modelId: string): Promise<VehicleGeneration[]> {
+    return Promise.resolve(GLOBAL_GENERATIONS.filter((g) => g.modelId === modelId));
+  }
+
+  async getEngines(): Promise<Engine[]> {
+    return Promise.resolve([...GLOBAL_ENGINES]);
+  }
+
+  async getEngineById(engineId: string): Promise<Engine | null> {
+    const engine = GLOBAL_ENGINES.find((e) => e.engineId === engineId) || null;
+    return Promise.resolve(engine);
+  }
+
+  async getGlobalVehicleById(id: string): Promise<GlobalVehicleComposite | null> {
+    const found = this.globalVehicles.find((v) => v.id.toLowerCase() === id.toLowerCase()) || null;
+    return Promise.resolve(found);
+  }
+
+  async getAllGlobalVehicles(): Promise<GlobalVehicleComposite[]> {
+    return Promise.resolve([...this.globalVehicles]);
+  }
+
+  async getMarketConfigurations(vehicleConfigId?: string, countryCode?: string): Promise<MarketConfiguration[]> {
+    let list = [...GLOBAL_MARKET_CONFIGURATIONS];
+    if (vehicleConfigId) {
+      list = list.filter((m) => m.vehicleConfigurationId === vehicleConfigId);
+    }
+    if (countryCode) {
+      list = list.filter((m) => m.countryCode === countryCode);
+    }
+    return Promise.resolve(list);
+  }
+
+  async getVehicleSystems(_vehicleId?: string): Promise<VehicleSystem[]> {
+    const systems: VehicleSystem[] = (Object.keys(STANDARD_VEHICLE_SYSTEMS_DEF) as StandardSystemType[]).map(
+      (sysId) => ({
+        id: sysId,
+        name: STANDARD_VEHICLE_SYSTEMS_DEF[sysId].name,
+        description: STANDARD_VEHICLE_SYSTEMS_DEF[sysId].description,
+        parts: GLOBAL_PARTS.filter((p) => p.systemId === sysId).map((p) => p.id),
+        knownProblems: GLOBAL_KNOWN_PROBLEMS.filter((kp) => kp.relatedSystems.includes(sysId)).map((kp) => kp.id),
+        maintenance: [],
+        repairs: []
+      })
+    );
+    return Promise.resolve(systems);
+  }
+
+  async getParts(systemId?: StandardSystemType): Promise<Part[]> {
+    if (systemId) {
+      return Promise.resolve(GLOBAL_PARTS.filter((p) => p.systemId === systemId));
+    }
+    return Promise.resolve([...GLOBAL_PARTS]);
+  }
+
+  async getKnownProblems(engineIdOrCode?: string): Promise<KnownProblem[]> {
+    if (engineIdOrCode) {
+      const q = engineIdOrCode.toUpperCase().trim();
+      return Promise.resolve(
+        GLOBAL_KNOWN_PROBLEMS.filter((kp) =>
+          kp.affectedEngines.some((e) => e.toUpperCase() === q || e.toUpperCase().includes(q))
+        )
+      );
+    }
+    return Promise.resolve([...GLOBAL_KNOWN_PROBLEMS]);
+  }
+
+  async getMaintenanceItems(engineId?: string): Promise<MaintenanceItem[]> {
+    if (engineId) {
+      return Promise.resolve(GLOBAL_MAINTENANCE_ITEMS.filter((m) => m.engineId === engineId));
+    }
+    return Promise.resolve([...GLOBAL_MAINTENANCE_ITEMS]);
+  }
+
+  async getRepairs(partId?: string): Promise<Repair[]> {
+    if (partId) {
+      return Promise.resolve(GLOBAL_REPAIRS.filter((r) => r.partId === partId));
+    }
+    return Promise.resolve([...GLOBAL_REPAIRS]);
+  }
+
+  async resolveVehicle(input: string | PartialVehicleInput, countryCode = 'ES'): Promise<VehicleResolutionResult> {
+    return VehicleResolverService.resolveVehicle(input, countryCode);
+  }
+
+  // --- Domain Vehicle Methods ---
+
   async getAllDomainVehicles(): Promise<Vehicle[]> {
     return Promise.resolve([...this.vehicles]);
   }
@@ -48,7 +182,6 @@ export class LocalVehicleRepository implements VehicleRepository {
   }
 
   async findByMarket(market: MarketCode): Promise<Vehicle[]> {
-    // In our multi-market architecture, return vehicles tailored or compatible with that market
     const all = await this.getAllDomainVehicles();
     if (market === 'EUROPE') {
       return all.filter((v) => ['Volkswagen', 'Peugeot', 'Renault', 'BMW', 'Toyota', 'Ford'].includes(v.brand));
@@ -132,7 +265,7 @@ export class LocalVehicleRepository implements VehicleRepository {
     };
   }
 
-  // Legacy SampleDemoCar Methods (for existing UI compatibility)
+  // --- Legacy SampleDemoCar Methods (for existing UI compatibility) ---
   async getAllVehicles(): Promise<SampleDemoCar[]> {
     return Promise.resolve([...this.demoCars]);
   }

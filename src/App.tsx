@@ -41,6 +41,7 @@ export default function App() {
   >({});
   const [tempMileage, setTempMileage] = useState<number | undefined>(undefined);
   const [tempPrice, setTempPrice] = useState<number | undefined>(undefined);
+  const [chatInitialPrompt, setChatInitialPrompt] = useState<string | undefined>(undefined);
 
   const [savedReports, setSavedReports] = useState<CarAnalysisReport[]>(() => {
     try {
@@ -269,11 +270,25 @@ export default function App() {
         {currentView === 'chat' && (
           <CarChatAssistant
             report={currentReport}
-            onBack={() => setCurrentView(currentReport ? 'report' : 'home')}
+            initialPrompt={chatInitialPrompt}
+            onBack={() => {
+              setChatInitialPrompt(undefined);
+              setCurrentView(currentReport ? 'report' : 'home');
+            }}
           />
         )}
 
-        {currentView === '3d' && <Car3DExplorer />}
+        {currentView === '3d' && (
+          <Car3DExplorer
+            report={currentReport}
+            session={currentSession}
+            onNavigateToChat={(prompt) => {
+              setChatInitialPrompt(prompt);
+              setCurrentView('chat');
+            }}
+            onNavigateToReport={() => setCurrentView('report')}
+          />
+        )}
 
         {currentView === 'assistant' && (
           <AssistantMode onFinish={() => setCurrentView('home')} />

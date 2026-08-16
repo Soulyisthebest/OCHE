@@ -14,9 +14,10 @@
 - 📊 **Puntuación de Compra (0–100)**: Evaluación ponderada (Fiabilidad 25%, Estado visible 20%, Mantenimiento 20%, Riesgo 15%, Precio 20%).
 - 💰 **Calculadora de Coste Real**: Desglose transparente del precio del vendedor, gastos de transferencia, mantenimiento inicial recomendado y reparaciones probables en rangos (€).
 - 🧑‍🔧 **Modo "Guíame" (No sé qué mirar)**: Asistente interactivo paso a paso para comprobar ruidos, arranque en frío, embrague y puntos clave delante del vehículo.
-- 🚗 **Explorador Técnico 3D**: Modelo interactivo 360º con zonas de inspección (Motor, Frenos, Suspensión, Transmisión, Batería, Electrónica) e información de reparaciones.
+- 🚗 **Explorador Técnico 3D Interactivo (Fase 7)**: Sistema visual de conocimiento automotriz con órbitas 360º, hotspots interactivos, presets cinemáticos de cámara, explicación dual ELI5 vs. Avanzada, qué puede fallar, guía de inspección técnica, explorador de síntomas y desglose de costes en moneda local por país.
 - 📚 **Aprende Mecánica & Trivia**: Guía conceptual y juego de preguntas sobre mecánica básica.
-- 🗄️ **Base de Datos Local de Demostración**: Incluye ejemplos precargados (*Toyota Yaris 1.0 Gasolina*, *Volkswagen Golf 2.0 TDI*, *Peugeot 208 1.2 PureTech*) etiquetados como `DATOS DE DEMOSTRACIÓN`.
+- 🗄️ **Base de Datos y Ontología Global de Vehículos (Fase 5 & 7)**: Arquitectura jerárquica con 16 sistemas estándar de ingeniería, catálogo canónico (`brandId`, `modelId`, `generationId`, `engineId`, `vehicleConfigurationId`, `marketId`), resolución con desambiguación (`VehicleResolverService`), y trazabilidad de procedencia (`source`, `confidence`, `isDemo`).
+- 🌍 **Motor de Costes & Configuraciones Multi-Mercado**: Soporte internacional desacoplado (`MarketConfiguration` y `CostEngine`) con especificaciones de mercado (DGT, ITV, TÜV, MOT, moneda, tarifas horarias locales de taller).
 
 ---
 

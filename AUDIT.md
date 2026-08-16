@@ -93,17 +93,24 @@ Actualizar la llamada en `server.ts` al nombre oficial de modelo: `gemini-2.5-fl
 
 ---
 
-## 7. SISTEMA 3D
+## 7. SISTEMA 3D (ACTUALIZADO TRAS FASE 7)
 
 ### Clasificación por Niveles:
-- **Nivel 1**: Modelo 3D genérico / diagrama vectorial interactivo. *(ESTADO ACTUAL)*
+- **Nivel 1**: Modelo 3D genérico / diagrama vectorial interactivo.
 - **Nivel 2**: Modelo 3D específico por marca/modelo.
-- **Nivel 3**: Modelo 3D con despiece interno.
-- **Nivel 4**: Modelo 3D interactivo con animación de componentes.
-- **Nivel 5**: Pieza → Problema → Precio → Reparación.
+- **Nivel 3**: Modelo 3D con despiece interno y presets de cámara.
+- **Nivel 4**: Modelo 3D interactivo con animación de componentes y abstracción de vista explosionada.
+- **Nivel 5**: Pieza → Problema → Síntoma → Comprobación → Reparación → Coste Multi-País. *(ESTADO ACTUAL TRAS FASE 7)*
 
-### ESTADO ACTUAL DEL 3D: **NIVEL 1**
-Actualmente `Car3DExplorer.tsx` utiliza una ilustración vectorial interactiva en SVG/Canvas que permite rotación simulada 360º mediante arrastre horizontal y selección de 6 zonas mecánicas (Motor, Frenos, Suspensión, Transmisión, Batería, Electrónica) vinculadas a piezas, síntomas y estimación de costes. Cumple perfectamente para el MVP ligero sin ralentizar dispositivos móviles.
+### ESTADO ACTUAL DEL 3D: **NIVEL 5 — INTERACTIVE VEHICLE KNOWLEDGE EXPLORER**
+El sistema 3D se ha desacoplado y convertido en una interfaz visual de conocimiento automotriz completa:
+1. **Modelos Canónicos (`Car3DModel`)**: Catálogo desacoplado en `/src/data/car3DModelsDatabase.ts` que incluye modelos específicos (VW Golf EA288, Peugeot 208 PureTech) y modelo universal genérico.
+2. **Puente Ontológico (`Vehicle3DService`)**: Cada hotspot 3D mapea a un `partId` del repositorio canónico de vehículos sin hardcodear lógica de reparación en el componente visual.
+3. **Explicación Dual (ELI5 vs. Técnico)**: Modo "Fácil" para compradores inexpertos y "Detallado" para mecánicos.
+4. **Guía de Inspección y Síntomas**: Pasos seguros de comprobación ("Qué mirar", "Cómo comprobar", "Qué es normal/sospechoso") y explorador de síntomas probables.
+5. **Coste Multi-Mercado Dinámico**: Integración con `CostEngine` y `CountryProfile` para desglosar piezas (nueva, OEM, aftermarket, desguace) y mano de obra en divisa local (EUR, USD, MXN, COP, etc.).
+6. **Integración con Escáner e IA Chat**: Mapeo visual de fallos detectados en el informe del escáner (`OBSERVED`, `POSSIBLE`, `KNOWN`) y lanzamiento contextualizado al chat asistente de OCHE.
+7. **Accesibilidad y Fallback 2D**: Vista alternativa estructurada por sistemas y piezas para dispositivos sin aceleración gráfica o usuarios con lectores de pantalla.
 
 ---
 
@@ -323,5 +330,45 @@ Pasadas al 100% (17/17 tests totales en verde):
    - `npm run lint`: 0 errores de compilación TypeScript.
    - `npm run build`: Compilación en producción correcta en `dist/`.
    - `Demo Mode 0 €`: Funcionamiento autónomo garantizado sin API Key.
+
+---
+
+## 🏛️ FASE 5: GLOBAL VEHICLE KNOWLEDGE CORE (AUDITORÍA & ESTADO FINAL)
+
+Se ha implementado formalmente el **Global Vehicle Knowledge Core** de OCHE / CARCHECK AI:
+
+### 1. Jerarquía Ontológica Implementada
+- `Brand` (`brandId`, `officialName`, `aliases[]`, `countryOfOrigin`)
+- `VehicleModel` (`modelId`, `brandId`, `name`, `segment`, `bodyStyles[]`)
+- `VehicleGeneration` (`generationId`, `modelId`, `generationName`, `yearFrom`, `yearTo`, `facelift`)
+- `Engine` (`engineId`, `manufacturer`, `family`, `name`, `engineCodes[]`, `displacement`, `fuel`, `timingType`, `power`, `torque`)
+- `VehicleConfiguration` (`vehicleConfigurationId`, `generationId`, `engineId`, `transmission`, `fuel`, `powerHp`)
+- `MarketConfiguration` (`marketId`, `vehicleConfigurationId`, `countryCode`, `localSpecifications`, `localUnits`)
+- `VehicleSystem` (16 sistemas estándar de la ingeniería automotriz)
+- `Part` (`id`, `systemId`, `function`, `symptoms[]`, `failureModes[]`, `inspectionMethods[]`, `riskLevel`)
+- `KnownProblem` (`id`, `severity`, `symptoms[]`, `inspectionMethod`, `estimatedRepair`)
+- `MaintenanceItem` (`id`, `intervalKm`, `intervalMonths`, `severity`)
+- `Repair` (`id`, `partsCost`, `laborCost`, `estimatedTimeHours`)
+- `CostModel` (`minimum`, `expected`, `maximum`, `currency`, `confidence`)
+
+### 2. Principio de Cero Fabricación de Datos (Zero Fabrication)
+- Todas las entidades portan metadatos `ProvenanceMetadata` (`source`, `sourceType`, `sourceDate`, `confidence`, `isDemo`, `dataVersion`).
+- Tipos de fuentes rigurosas: `OFFICIAL`, `MANUFACTURER`, `TECHNICAL`, `WORKSHOP`, `MARKET`, `USER`, `AI`, `DEMO`, `UNKNOWN`.
+- Campos sin datos verificados se mantienen explícitamente en `null` o `unknown`.
+
+### 3. Motor de Resolución y Desambiguación
+- `VehicleResolverService.resolveVehicle()`: Resuelve consultas con información parcial o difusa.
+- Normaliza alias de fabricantes (`VW` $\rightarrow$ `Volkswagen`, `PSA` $\rightarrow$ `Peugeot`, `Bimmer` $\rightarrow$ `BMW`).
+- Extrae códigos de motor (`CRBC`, `EB2DT`, `1KR-FE`, `N47D20`, `B47D20`).
+- Si la diferencia de confianza entre candidatos es inferior a 0.15, marca `isAmbiguous: true` y no selecciona a ciegas.
+
+### 4. Grounding de IA
+- Inyección de contexto canónico en `server.ts` para evitar que Gemini invente especificaciones, averías o costes cuando existen datos estructurados.
+
+### 5. Suite de Pruebas Automatizadas
+- 63 tests unitarios ejecutados y superados con éxito en 7 suites de pruebas (`npm run test`).
+- 0 errores de linter (`npm run lint`).
+- Compilación de producción (`npm run build`) verificada y dev server reiniciado.
+
 
 

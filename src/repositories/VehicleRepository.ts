@@ -1,8 +1,41 @@
 import { SampleDemoCar } from '../data/sampleCars';
 import { Vehicle } from '../types/vehicleEngine';
 import { CountryCode, MarketCode, VehicleMarketVersion } from '../types/country';
+import {
+  Brand,
+  VehicleModel,
+  VehicleGeneration,
+  Engine,
+  GlobalVehicleComposite,
+  MarketConfiguration,
+  VehicleSystem,
+  Part,
+  KnownProblem,
+  MaintenanceItem,
+  Repair,
+  StandardSystemType
+} from '../types/vehicleKnowledge';
+import { PartialVehicleInput, VehicleResolutionResult } from '../services/VehicleResolverService';
 
 export interface VehicleRepository {
+  // --- FASE 5: Global Vehicle Knowledge Core Methods ---
+  getBrands(): Promise<Brand[]>;
+  getBrandById(brandId: string): Promise<Brand | null>;
+  getModelsByBrand(brandId: string): Promise<VehicleModel[]>;
+  getGenerationsByModel(modelId: string): Promise<VehicleGeneration[]>;
+  getEngines(): Promise<Engine[]>;
+  getEngineById(engineId: string): Promise<Engine | null>;
+  getGlobalVehicleById(id: string): Promise<GlobalVehicleComposite | null>;
+  getAllGlobalVehicles(): Promise<GlobalVehicleComposite[]>;
+  getMarketConfigurations(vehicleConfigId?: string, countryCode?: string): Promise<MarketConfiguration[]>;
+  getVehicleSystems(vehicleId?: string): Promise<VehicleSystem[]>;
+  getParts(systemId?: StandardSystemType): Promise<Part[]>;
+  getKnownProblems(engineIdOrCode?: string): Promise<KnownProblem[]>;
+  getMaintenanceItems(engineId?: string): Promise<MaintenanceItem[]>;
+  getRepairs(partId?: string): Promise<Repair[]>;
+  resolveVehicle(input: string | PartialVehicleInput, countryCode?: string): Promise<VehicleResolutionResult>;
+
+  // --- Domain Vehicle Methods ---
   /** Get all structured domain vehicles */
   getAllDomainVehicles(): Promise<Vehicle[]>;
 
@@ -33,6 +66,7 @@ export interface VehicleRepository {
   /** Find specific country market version of vehicle */
   findByMarketVersion(countryCode: CountryCode, globalVehicleId: string): Promise<VehicleMarketVersion | null>;
 
+  // --- Legacy SampleDemoCar Methods (for existing UI) ---
   /** Get all available demo/cached legacy vehicles (for existing UI) */
   getAllVehicles(): Promise<SampleDemoCar[]>;
 
@@ -42,3 +76,4 @@ export interface VehicleRepository {
   /** Search legacy vehicles by query text */
   searchVehicles(query: string): Promise<SampleDemoCar[]>;
 }
+

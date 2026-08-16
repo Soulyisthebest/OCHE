@@ -4,6 +4,7 @@ import { CarAnalysisReport } from '../types';
 
 interface CarChatAssistantProps {
   report?: CarAnalysisReport | null;
+  initialPrompt?: string;
   onBack: () => void;
 }
 
@@ -22,7 +23,7 @@ const PRESET_QUESTIONS = [
   "¿Tiene correa de distribución o cadena?"
 ];
 
-export const CarChatAssistant: React.FC<CarChatAssistantProps> = ({ report, onBack }) => {
+export const CarChatAssistant: React.FC<CarChatAssistantProps> = ({ report, initialPrompt, onBack }) => {
   const carName = report ? `${report.identity.make} ${report.identity.model} (${report.identity.engine})` : 'el coche consultado';
 
   const initialGreeting = report
@@ -37,8 +38,14 @@ export const CarChatAssistant: React.FC<CarChatAssistantProps> = ({ report, onBa
       timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
     }
   ]);
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState(initialPrompt || '');
   const [isTyping, setIsTyping] = useState(false);
+
+  React.useEffect(() => {
+    if (initialPrompt && initialPrompt.trim()) {
+      handleSendMessage(initialPrompt);
+    }
+  }, [initialPrompt]);
 
   const handleSendMessage = (textToSend?: string) => {
     const text = textToSend || inputText;

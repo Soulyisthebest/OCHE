@@ -32,11 +32,18 @@ async function startServer() {
         }
       });
 
-      // Prepare parts for Gemini multimodal
+      // Prepare parts for Gemini multimodal with Grounded Automotive Knowledge Core
       const contentsParts: any[] = [
         {
-          text: `Eres el motor experto de inspección de vehículos usados para CARCHECK AI.
+          text: `Eres el motor experto de inspección de vehículos usados para CARCHECK AI / OCHE.
 Analiza las fotografías proporcionadas del coche y genera un informe de evaluación detallado en ESPAÑOL.
+
+REGLA ABSOLUTA DE GROUNDING (FUENTE DE VERDAD):
+Utiliza como contexto y fuente primaria el catálogo canónico de OCHE / CARCHECK AI:
+- Volkswagen Golf VII (Typ 5G, 2012-2019): Motor EA288 (códigos CRBC, CRLB, DEJA). Problemas conocidos: Bomba de agua (fugas/agarrotamiento electroválvula, 380-750 €), DPF por uso urbano excesivo.
+- Peugeot 208 I (A9, 2012-2019): Motor 1.2 PureTech (EB2DT, EB2ADT). Problemas conocidos: Correa sumergida en aceite (Wet Belt) propensa a desintegración por dilución de gasolina con riesgo de obstrucción de chupona de aceite (650-1400 €), consumo de aceite.
+- Toyota Yaris III (XP130, 2011-2020): Motor 1.0 VVT-i (1KR-FE). Problemas conocidos: Desgaste de embrague en ciclo 100% urbano (320-680 €), rezume leve en bomba de agua (140-320 €).
+- BMW Serie 3 F30 (2012-2019): Motor 2.0d TwinPower (N47D20 / B47D20). Problemas conocidos: Cadena de distribución trasera en N47 hasta 2015 (1100-2400 €), refrigerador de EGR bajo campaña técnica (0-650 €).
 
 INSTRUCCIONES CLAVE:
 1. IDENTIFICACIÓN: Determina Marca, Modelo, Generación, Año estimado, Motorización, Combustible, Potencia HP y Cambio. Si no estás 100% seguro de un dato, pon needsConfirmation: true.

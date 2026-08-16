@@ -5,6 +5,26 @@ import { StructuredFinding } from '../types/evidence';
 import { ValidationService } from './ValidationService';
 import { CountryEngine } from './CountryEngine';
 import { CountryProfile, CountryCode } from '../types/country';
+import {
+  PriceFactors,
+  MarketPriceEstimate,
+  RealPurchaseCostResult,
+  DealScoreResult,
+  TargetPriceResultExtended,
+  NegotiationProposal,
+  WhatIfSimulationInput,
+  WhatIfSimulationOutput,
+  CountryOwnershipComparisonResult,
+  PartCondition,
+  RepairCostEstimate
+} from '../types/costIntelligence';
+import { MarketPriceEngine } from './MarketPriceEngine';
+import { RepairCostEngine } from './RepairCostEngine';
+import { EntryCostEngine } from './EntryCostEngine';
+import { DealScoreEngine } from './DealScoreEngine';
+import { NegotiationEngine } from './NegotiationEngine';
+import { WhatIfEngine } from './WhatIfEngine';
+import { CountryComparisonEngine } from './CountryComparisonEngine';
 
 export interface WhatIfScenarioItem {
   id: string;
@@ -431,5 +451,118 @@ export class CostEngine {
       adjustedVerdict,
       negotiationScript
     };
+  }
+
+  // -------------------------------------------------------------
+  // FASE 6 Modular Engine Facades
+  // -------------------------------------------------------------
+
+  /**
+   * Estimate vehicle fair market value (FASE 6)
+   */
+  static estimateMarketPrice(factors: PriceFactors): MarketPriceEstimate {
+    return MarketPriceEngine.estimateMarketPrice(factors);
+  }
+
+  /**
+   * Estimate repair cost with parts condition and scenario projections (FASE 6)
+   */
+  static estimateRepair(params: {
+    repairId: string;
+    title: string;
+    systemId: string;
+    partId?: string;
+    partCondition?: PartCondition;
+    laborHours: number;
+    additionalCostsMin?: number;
+    additionalCostsMax?: number;
+    countryCode?: CountryCode;
+    isDemo?: boolean;
+  }): RepairCostEstimate {
+    return RepairCostEngine.estimateRepair(params);
+  }
+
+  /**
+   * Calculate full real purchase & ownership entry cost (FASE 6)
+   */
+  static calculateRealPurchaseCost(params: {
+    purchasePrice: number;
+    countryCode: CountryCode;
+    immediateRepairs?: RepairCostEstimate[];
+    maintenanceCostMin?: number;
+    maintenanceCostMax?: number;
+    inspectionRequired?: boolean;
+    isDemo?: boolean;
+  }): RealPurchaseCostResult {
+    return EntryCostEngine.calculateRealPurchaseCost(params);
+  }
+
+  /**
+   * Calculate independent Deal Score (FASE 6)
+   */
+  static calculateDealScore(params: {
+    askingPrice: number;
+    fairMarketMedian: number;
+    vehicleQualityScore: number;
+    repairExposureExpected: number;
+    totalEntryCostExpected: number;
+    isDemo?: boolean;
+  }): DealScoreResult {
+    return DealScoreEngine.calculateDealScore(params);
+  }
+
+  /**
+   * Calculate extended target price with walk-away limits (FASE 6)
+   */
+  static calculateTargetPriceExtended(params: {
+    askingPrice: number;
+    fairMarketRange?: { minimum: number; median: number; maximum: number };
+    repairExposureExpected: number;
+    maintenanceExposureExpected?: number;
+    vehicleQualityScore?: number;
+    countryCode?: CountryCode;
+    isDemo?: boolean;
+  }): TargetPriceResultExtended {
+    return NegotiationEngine.calculateTargetPrice(params);
+  }
+
+  /**
+   * Generate tactical negotiation proposal (FASE 6)
+   */
+  static generateNegotiationProposal(params: {
+    askingPrice: number;
+    fairMarketRange?: { minimum: number; median: number; maximum: number };
+    repairExposureExpected: number;
+    maintenanceExposureExpected?: number;
+    vehicleQualityScore?: number;
+    countryCode?: CountryCode;
+    detectedDefects?: string[];
+    isDemo?: boolean;
+  }): NegotiationProposal {
+    return NegotiationEngine.generateProposal(params);
+  }
+
+  /**
+   * Run advanced what-if simulation (FASE 6)
+   */
+  static runWhatIfSimulation(
+    input: WhatIfSimulationInput,
+    countryCode?: CountryCode
+  ): WhatIfSimulationOutput {
+    return WhatIfEngine.simulate(input, countryCode);
+  }
+
+  /**
+   * Compare ownership entry cost across global markets (FASE 6)
+   */
+  static compareOwnershipCost(params: {
+    vehicleName: string;
+    basePriceEUR: number;
+    year: number;
+    mileageKm: number;
+    standardLaborHours?: number;
+    targetCountries?: CountryCode[];
+  }): CountryOwnershipComparisonResult {
+    return CountryComparisonEngine.compareOwnershipCost(params);
   }
 }
