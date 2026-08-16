@@ -65,6 +65,11 @@ export class LocalVehicleRepository implements VehicleRepository {
     return Promise.resolve(GLOBAL_GENERATIONS.filter((g) => g.modelId === modelId));
   }
 
+  async getGenerationById(generationId: string): Promise<VehicleGeneration | null> {
+    const gen = GLOBAL_GENERATIONS.find((g) => g.generationId === generationId) || null;
+    return Promise.resolve(gen);
+  }
+
   async getEngines(): Promise<Engine[]> {
     return Promise.resolve([...GLOBAL_ENGINES]);
   }

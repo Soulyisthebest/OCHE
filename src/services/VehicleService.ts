@@ -46,7 +46,7 @@ export class VehicleService {
       }
 
       return matchBrand && matchModel && (matchYear || matchFuel);
-    }) || this.vehicles[0]; // fallback to first sample vehicle
+    });
   }
 
   /**

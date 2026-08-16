@@ -23,6 +23,7 @@ export interface VehicleRepository {
   getBrandById(brandId: string): Promise<Brand | null>;
   getModelsByBrand(brandId: string): Promise<VehicleModel[]>;
   getGenerationsByModel(modelId: string): Promise<VehicleGeneration[]>;
+  getGenerationById(generationId: string): Promise<VehicleGeneration | null>;
   getEngines(): Promise<Engine[]>;
   getEngineById(engineId: string): Promise<Engine | null>;
   getGlobalVehicleById(id: string): Promise<GlobalVehicleComposite | null>;

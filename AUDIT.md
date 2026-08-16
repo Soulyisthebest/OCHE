@@ -370,5 +370,18 @@ Se ha implementado formalmente el **Global Vehicle Knowledge Core** de OCHE / CA
 - 0 errores de linter (`npm run lint`).
 - Compilación de producción (`npm run build`) verificada y dev server reiniciado.
 
+---
+
+## 🎯 FASE 9: REAL USER MVP VALIDATION & ERGONOMICS (AUDITORÍA FINAL)
+
+### 1. Resumen de Implementación
+- **Flujo de Usuario Optimizado para Móvil**: Flujo guiado de escaneo rápido (4 fotos) vs completo (8 fotos) con objetivos táctiles de más de 44px.
+- **Transparencia y Explicabilidad ("¿Por qué?")**: 3 a 5 motivos determinantes por veredicto en el informe.
+- **Sección Explícita de Límites Viso-Mecánicos**: "⚪ Cosas que no se pueden comprobar en fotos" (compresión, turbo a carga, embrague/bimasa, cargas en DGT).
+- **Mecanismo de Feedback Local**: Widget "¿Te ha ayudado este análisis?" con almacenamiento local y telemetría privada sin filtrado de datos.
+- **Indicadores de Modo de Prueba (`REAL_TEST_MODE`)**: Distintivos visibles `[MODO DEMO]` vs `[ANÁLISIS IA]`.
+- **Avisos de Confianza y Límites Legales**: Disclaimers claros que indican que OCHE no sustituye una inspección profesional.
+
+
 
 

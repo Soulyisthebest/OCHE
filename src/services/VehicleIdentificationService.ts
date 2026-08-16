@@ -114,30 +114,40 @@ export class VehicleIdentificationService {
     // Sort descending by confidence
     scoredCandidates.sort((a, b) => b.confidence - a.confidence);
 
-    const topCandidate = scoredCandidates[0] || {
-      vehicleId: 'golf-7-tdi',
-      brand: 'Volkswagen',
-      model: 'Golf',
-      generation: 'VII (Typ 5G)',
-      engine: '2.0 TDI CR 150 CV',
-      fuel: 'Diésel' as const,
-      power: 150,
-      transmission: 'Manual' as const,
-      yearRange: '2012 – 2019',
-      confidence: 0.88,
-      matchingTraits: ['Diseño exterior hatchback', 'Arquitectura MQB']
-    };
+    const hasGoodMatch = scoredCandidates.length > 0 && scoredCandidates[0].confidence > 0.4;
+    const topCandidate = hasGoodMatch
+      ? scoredCandidates[0]
+      : {
+          vehicleId: 'unknown-vehicle',
+          brand: userInputs?.brandHint || 'Vehículo No Identificado',
+          model: userInputs?.modelHint || 'Modelo Desconocido',
+          generation: 'Pendiente de confirmación',
+          engine: 'Motorización no especificada',
+          fuel: (userInputs?.fuel as any) || 'Gasolina',
+          power: 100,
+          transmission: (userInputs?.transmission as any) || 'Manual',
+          yearRange: userInputs?.year ? `${userInputs.year} – ${userInputs.year + 2}` : '2015 – 2024',
+          confidence: userInputs?.brandHint ? 0.45 : 0.0,
+          matchingTraits: ['Pendiente de confirmación visual o datos adicionales']
+        };
 
-    const matchedVehicle = await repo.getDomainVehicleById(topCandidate.vehicleId);
+    const matchedVehicle = topCandidate.vehicleId !== 'unknown-vehicle'
+      ? await repo.getDomainVehicleById(topCandidate.vehicleId)
+      : null;
 
-    const evidence: string[] = [
-      `Ópticas y calandra frontal características de ${topCandidate.brand} ${topCandidate.model} (${topCandidate.generation}).`,
-      `Grupo motopropulsor detectado: ${topCandidate.engine} (${topCandidate.fuel}).`,
-      ...topCandidate.matchingTraits
-    ];
+    const evidence: string[] = topCandidate.vehicleId !== 'unknown-vehicle'
+      ? [
+          `Ópticas y calandra frontal características de ${topCandidate.brand} ${topCandidate.model} (${topCandidate.generation}).`,
+          `Grupo motopropulsor detectado: ${topCandidate.engine} (${topCandidate.fuel}).`,
+          ...topCandidate.matchingTraits
+        ]
+      : [
+          'No se dispone de suficientes rasgos visuales para una identificación inequívoca.',
+          'Se requiere confirmación manual de marca y modelo.'
+        ];
 
     const unknowns: string[] = [
-      'No es posible confirmar el código exacto de motor (ej. CRBC vs CRLB) sin consultar la ficha técnica o etiqueta en maletero.',
+      'No es posible confirmar el código exacto de motor sin consultar la ficha técnica o etiqueta en maletero.',
       'El nivel de equipamiento interior exacto requiere confirmación del número de bastidor (VIN).'
     ];
 

@@ -130,6 +130,8 @@ export interface CarAnalysisReport {
   checklist: ChecklistItem[];
   recommendation: string;
   cannotDetermineNote: string;
+  isDemo?: boolean;
+  source?: 'LOCAL_REPO' | 'GLOBAL_DB' | 'GEMINI_VISION' | 'DEMO_DATA' | 'FALLBACK';
 }
 
 export interface InspectionStepOption {

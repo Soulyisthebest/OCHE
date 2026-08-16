@@ -16,7 +16,7 @@ async function startServer() {
   // API route for CARCHECK AI Analysis
   app.post('/api/analyze-car', async (req, res) => {
     try {
-      const { photos, mileageKm, askingPrice } = req.body;
+      const { photos, mileageKm, askingPrice, vehicleContext, countryCode, currencySymbol } = req.body;
 
       if (!process.env.GEMINI_API_KEY) {
         console.log('No GEMINI_API_KEY set, returning error code for client fallback');
@@ -32,46 +32,37 @@ async function startServer() {
         }
       });
 
+      const curr = currencySymbol || '€';
+      const groundingBlock = vehicleContext
+        ? `\nCONTEXTO DINÁMICO DEL VEHÍCULO SUMINISTRADO POR VEHICLE REPOSITORY:\n${vehicleContext}\n`
+        : `\nINSTRUCCIÓN: Identifica objetivamente marca, modelo, generación y motor a partir de las evidencias visuales. Si no hay suficiente certeza, indica needsConfirmation: true y confidenceScore < 70.\n`;
+
       // Prepare parts for Gemini multimodal with Grounded Automotive Knowledge Core
       const contentsParts: any[] = [
         {
-          text: `Eres el motor experto de inspección de vehículos usados para CARCHECK AI / OCHE.
-Analiza las fotografías proporcionadas del coche y genera un informe de evaluación detallado en ESPAÑOL.
+          text: `Eres el motor de análisis e inspección visual de vehículos usados para CARCHECK AI / OCHE.
+Analiza las fotografías proporcionadas del coche y genera un informe de evaluación estructurado en ESPAÑOL.
 
-REGLA ABSOLUTA DE GROUNDING (FUENTE DE VERDAD):
-Utiliza como contexto y fuente primaria el catálogo canónico de OCHE / CARCHECK AI:
-- Volkswagen Golf VII (Typ 5G, 2012-2019): Motor EA288 (códigos CRBC, CRLB, DEJA). Problemas conocidos: Bomba de agua (fugas/agarrotamiento electroválvula, 380-750 €), DPF por uso urbano excesivo.
-- Peugeot 208 I (A9, 2012-2019): Motor 1.2 PureTech (EB2DT, EB2ADT). Problemas conocidos: Correa sumergida en aceite (Wet Belt) propensa a desintegración por dilución de gasolina con riesgo de obstrucción de chupona de aceite (650-1400 €), consumo de aceite.
-- Toyota Yaris III (XP130, 2011-2020): Motor 1.0 VVT-i (1KR-FE). Problemas conocidos: Desgaste de embrague en ciclo 100% urbano (320-680 €), rezume leve en bomba de agua (140-320 €).
-- BMW Serie 3 F30 (2012-2019): Motor 2.0d TwinPower (N47D20 / B47D20). Problemas conocidos: Cadena de distribución trasera en N47 hasta 2015 (1100-2400 €), refrigerador de EGR bajo campaña técnica (0-650 €).
+${groundingBlock}
 
-INSTRUCCIONES CLAVE:
-1. IDENTIFICACIÓN: Determina Marca, Modelo, Generación, Año estimado, Motorización, Combustible, Potencia HP y Cambio. Si no estás 100% seguro de un dato, pon needsConfirmation: true.
-2. OBSERVACIONES VISUALES: Revisa exterior (golpes, abolladuras, pintura), interior (desgaste), neumáticos y motor.
-   ¡REGLA CRÍTICA!: NUNCA afirmes que una pieza mecánica está funcionando perfectamente solo porque la foto parece normal.
-3. DATOS DEL MODELO:
-   - "LO BUENO": Puntos fuertes reales del modelo (fiabilidad, consumo, repuestos).
-   - "LO MALO": Puntos débiles del modelo.
-   - "PROBLEMAS CONOCIDOS": Fallos o averías conocidas del modelo. Diferencia siempre si es un problema general del modelo vs un problema observado en ESTE coche concreto.
-4. PUNTUACIÓN (0-100): Asigna una puntuación realista y desglosada por categorías (Fiabilidad, Estado visible, Mantenimiento, Riesgo, Relación calidad/precio).
-   - 80-100 = "Buena opción" (green)
-   - 60-79 = "Precaución / negociar" (yellow)
-   - 0-59 = "Alto riesgo" (red)
-5. COSTE REAL DE COMPRA:
-   - Precio anunciado: ${askingPrice || 'Estimación si no se proporciona'}
-   - Transferencia/Trámites: ~180-250 €
-   - Mantenimiento inicial recomendado: ~200-400 €
-   - Reparaciones probables visibles: Calcula en base a los hallazgos.
-   - Proporciona rangos de precio en Euros (€).
-6. REPARACIONES DETALLADAS:
-   - Nombre de la pieza, qué hace, por qué requiere atención, coste nueva, coste reacondicionada/usada (o null si no aplica), coste de mano de obra y prioridad ("Baja", "Media", "Alta").
-7. CHECKLIST INTERACTIVO ("Antes de comprar"):
-   - Tareas personalizadas para probar este modelo específico en persona (ej: arranque en frío, prueba de embrague, comprobar humo, ruidos). Incluye explicación sencilla para "¿Cómo lo compruebo?".
-8. NOTA DE ADVERTENCIA OBLIGATORIA:
-   - Incluye: "⚠️ No podemos comprobar esto mediante una fotografía." explicando la necesidad de prueba dinámica o mecánico.
+INSTRUCCIONES CLAVE Y PRINCIPIOS DE VERIFICABILIDAD:
+1. IDENTIFICACIÓN OBJETIVA: Determina Marca, Modelo, Generación, Rango de años estimado, Motorización, Combustible, Potencia HP y Transmisión. Si no tienes certeza visual inequívoca, marca "needsConfirmation: true" con "confidenceScore" ponderado.
+2. OBSERVACIONES VISUALES ("OBSERVED"): Revisa exterior (golpes, abolladuras, holguras de paneles, pintura), interior (desgaste de volante/pedales/asientos acorde a kilometraje), neumáticos (desgaste irregular/dibujo) y vano motor (fugas, estado de manguitos).
+   ¡REGLA CRÍTICA!: NUNCA afirmes que un componente interno funciona perfectamente solo porque no se ve dañado en la foto.
+3. DISTINCIÓN ENTRE AVERÍA CONOCIDA ("KNOWN") Y OBSERVACIÓN CONCRETA ("OBSERVED"):
+   - "LO BUENO" (pro): Puntos fuertes reales del modelo.
+   - "LO MALO" (con): Puntos débiles reconocidos.
+   - "PROBLEMAS CONOCIDOS" (known_issue): Fallos endémicos generales del motor/modelo (marca isModelGeneral: true). NUNCA los des por presentes en esta unidad concreta salvo evidencia visual directa.
+4. ESTIMACIONES PRELIMINARES DE REPARACIÓN Y PUESTA A PUNTO:
+   - Proporciona posibles reparaciones sugeridas detectadas en las fotos.
+   - La validación final de precios y costes exactos será contrastada por el motor de costes (CostEngine).
+5. CHECKLIST PERSONALIZADO IN SITU:
+   - Tareas concretas de inspección física antes de comprar este modelo específico (arranque en frío, comprobación de embrague, humo de escape, ruidos).
+6. ADVERTENCIA OBLIGATORIA:
+   - Indica claramente: "⚠️ No podemos comprobar componentes internos (compresión, desgaste de embrague o cadena) mediante una fotografía."
 
-Kilómetros aproximados o declarados: ${mileageKm ? `${mileageKm} km` : 'No especificado por el usuario'}
-Precio pedido por vendedor: ${askingPrice ? `${askingPrice} €` : 'No especificado por el usuario'}`
+Kilómetros declarados: ${mileageKm ? `${mileageKm} km` : 'No especificado'}
+Precio solicitado: ${askingPrice ? `${askingPrice} ${curr}` : 'No especificado'}`
         }
       ];
 

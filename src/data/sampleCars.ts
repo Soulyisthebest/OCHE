@@ -192,7 +192,9 @@ export const SAMPLE_DEMO_CARS: SampleDemoCar[] = [
         }
       ],
       recommendation: 'El vehículo está en muy buen estado general. Te recomendamos intentar negociar un descuento de unos 400 € a 500 € argumentando el próximo cambio de neumáticos y mantenimiento inicial.',
-      cannotDetermineNote: '⚠️ No podemos verificar mediante fotografías el desgaste interno del embrague, compresión de cilindros o el historial de cargas del filtro DPF. Comprueba estas partes en la prueba de conducción.'
+      cannotDetermineNote: '⚠️ No podemos verificar mediante fotografías el desgaste interno del embrague, compresión de cilindros o el historial de cargas del filtro DPF. Comprueba estas partes en la prueba de conducción.',
+      isDemo: true,
+      source: 'DEMO_DATA'
     }
   },
   {
@@ -338,7 +340,9 @@ export const SAMPLE_DEMO_CARS: SampleDemoCar[] = [
         }
       ],
       recommendation: 'Es un coche clásico divertido, pero solo recomendamos comprarlo si compruebas que las palomillas de admisión están anuladas o si descuentas 500 € para la puesta a punto en taller especialista.',
-      cannotDetermineNote: '⚠️ No es posible comprobar fotográficamente el estado del turbo interno, fisuras en el subchasis trasero ni las palomillas de admisión.'
+      cannotDetermineNote: '⚠️ No es posible comprobar fotográficamente el estado del turbo interno, fisuras en el subchasis trasero ni las palomillas de admisión.',
+      isDemo: true,
+      source: 'DEMO_DATA'
     }
   },
   {
@@ -442,7 +446,9 @@ export const SAMPLE_DEMO_CARS: SampleDemoCar[] = [
         }
       ],
       recommendation: 'Vehículo con alto riesgo mecánico por el historial del motor PureTech. Exige factura de cambio de correa reciente.',
-      cannotDetermineNote: '⚠️ No es posible determinar por fotografía la degradación química interna de la correa húmeda.'
+      cannotDetermineNote: '⚠️ No es posible determinar por fotografía la degradación química interna de la correa húmeda.',
+      isDemo: true,
+      source: 'DEMO_DATA'
     }
   },
   {
@@ -539,7 +545,9 @@ export const SAMPLE_DEMO_CARS: SampleDemoCar[] = [
         }
       ],
       recommendation: 'Excelente utilitario urbano para comprar sin dudar. Muy fiable y económico.',
-      cannotDetermineNote: '⚠️ No es posible determinar fotográficamente el desgaste de discos de freno o la salud de la batería de 12V.'
+      cannotDetermineNote: '⚠️ No es posible determinar fotográficamente el desgaste de discos de freno o la salud de la batería de 12V.',
+      isDemo: true,
+      source: 'DEMO_DATA'
     }
   }
 ];

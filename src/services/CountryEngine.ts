@@ -44,6 +44,13 @@ export class CountryEngine {
   }
 
   /**
+   * Get active Country Profile
+   */
+  static getActiveCountryProfile(): CountryProfile {
+    return this.getCountryProfile(this.activeCountryCode);
+  }
+
+  /**
    * Get Country Profile by code
    */
   static getCountryProfile(code?: CountryCode): CountryProfile {
