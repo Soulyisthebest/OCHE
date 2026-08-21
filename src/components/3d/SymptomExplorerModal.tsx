@@ -93,7 +93,7 @@ export const SymptomExplorerModal: React.FC<SymptomExplorerModalProps> = ({
             </div>
           ) : (
             <div className="space-y-4">
-              {symptoms.map((sym) => {
+              {(symptoms || []).map((sym) => {
                 const isSelected = selectedSymptom?.symptomId === sym.symptomId;
                 return (
                   <div
@@ -129,7 +129,7 @@ export const SymptomExplorerModal: React.FC<SymptomExplorerModalProps> = ({
                             🔧 Sistemas y Componentes a Verificar:
                           </span>
 
-                          {sym.candidateSystems.map((cand, idx) => (
+                          {(sym.candidateSystems || []).map((cand, idx) => (
                             <div
                               key={idx}
                               className="p-3.5 rounded-xl bg-black/70 border border-white/10 space-y-2 text-xs"
@@ -166,7 +166,7 @@ export const SymptomExplorerModal: React.FC<SymptomExplorerModalProps> = ({
                               </p>
 
                               <div className="flex flex-wrap gap-1.5 pt-1">
-                                {cand.candidateParts.map((p, pIdx) => (
+                                {(cand.candidateParts || []).map((p, pIdx) => (
                                   <span
                                     key={pIdx}
                                     className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-bold text-white/70"

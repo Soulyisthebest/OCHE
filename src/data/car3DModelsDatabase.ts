@@ -417,6 +417,242 @@ export const CANONICAL_3D_MODELS: Car3DModel[] = [
     author: 'OCHE Technical Team'
   },
   {
+    id: 'model-3d-toyota-yaris',
+    vehicleConfigurationId: 'vconfig-toyota-yaris-10',
+    modelName: 'Toyota Yaris 1.0 VVT-i (1KR-FE)',
+    make: 'Toyota',
+    model: 'Yaris',
+    engine: '1.0 VVT-i',
+    generation: 'III (XP130)',
+    yearStart: 2011,
+    yearEnd: 2020,
+    modelType: 'INTERACTIVE_VECTOR',
+    assetPath: '/assets/3d/toyota_yaris_xp130.svg',
+    format: 'vector/json',
+    scale: 1.0,
+    rotation: 0,
+    camera: {
+      position: { x: 0, y: 1.2, z: 4.5 },
+      target: { x: 0, y: 0, z: 0 },
+      fov: 45
+    },
+    zones: [
+      {
+        id: 'zone-engine-toyota',
+        name: 'Vano Motor 1KR-FE',
+        summary: 'Motor atmosférico tricilíndrico 1.0 VVT-i con cadena de distribución de alta fiabilidad.',
+        color: '#ef4444',
+        icon: 'Cpu',
+        cameraPreset: 'ENGINE',
+        hotspotPosition: { x: 26, y: 36, z: 1.0 },
+        systemIds: ['ENGINE', 'COOLING', 'ELECTRICAL', 'FUEL'],
+        partIds: ['part-toyota-clutchkit', 'part-gen-waterpump', 'part-gen-alternator', 'part-gen-battery']
+      },
+      {
+        id: 'zone-trans-toyota',
+        name: 'Embrague y Cambio Manual',
+        summary: 'Conjunto monodisco de embrague de accionamiento mecánico y caja C551 de 5 velocidades.',
+        color: '#8b5cf6',
+        icon: 'Settings',
+        cameraPreset: 'UNDERBODY',
+        hotspotPosition: { x: 38, y: 48, z: 0.1 },
+        systemIds: ['TRANSMISSION', 'DRIVETRAIN'],
+        partIds: ['part-toyota-clutchkit', 'part-gen-driveshaft']
+      },
+      {
+        id: 'zone-brakes-toyota',
+        name: 'Frenos y Suspensión Delantera',
+        summary: 'Discos macizos/ventilados delanteros, zapatas traseras y conjunto amortiguador.',
+        color: '#f59e0b',
+        icon: 'Disc',
+        cameraPreset: 'SIDE',
+        hotspotPosition: { x: 28, y: 64, z: 0.8 },
+        systemIds: ['BRAKES', 'SUSPENSION'],
+        partIds: ['part-gen-brakediscs', 'part-gen-shockabsorber']
+      }
+    ],
+    parts: [
+      {
+        id: 'p3d-toyota-clutch',
+        partId: 'part-toyota-clutchkit',
+        name: 'Kit de Embrague Monodisco (1.0 VVT-i)',
+        systemId: 'TRANSMISSION',
+        modelNodeId: 'node_toyota_clutch',
+        position: { x: 38, y: 48, z: 0.1 },
+        hotspot: { x: 38, y: 48, label: 'Embrague' },
+        description: 'Transmite la potencia a la caja manual. En uso intensivo de ciudad el disco sufre desgaste prematuro.',
+        interactable: true,
+        zoneId: 'zone-trans-toyota',
+        importance: 'HIGH'
+      },
+      {
+        id: 'p3d-toyota-waterpump',
+        partId: 'part-gen-waterpump',
+        name: 'Bomba de Agua (1KR-FE)',
+        systemId: 'COOLING',
+        modelNodeId: 'node_toyota_waterpump',
+        position: { x: 24, y: 38, z: 0.7 },
+        hotspot: { x: 24, y: 38, label: 'Bomba Agua' },
+        description: 'Accionada por correa auxiliar. Tiende a rezumar refrigerante rosado por el prensaestopas pasados los 90.000 km.',
+        interactable: true,
+        zoneId: 'zone-engine-toyota',
+        importance: 'HIGH'
+      },
+      {
+        id: 'p3d-toyota-brakes',
+        partId: 'part-gen-brakediscs',
+        name: 'Discos y Pastillas de Freno Delanteros',
+        systemId: 'BRAKES',
+        modelNodeId: 'node_toyota_brakes',
+        position: { x: 28, y: 64, z: 0.8 },
+        hotspot: { x: 28, y: 64, label: 'Frenos' },
+        description: 'Frenos delanteros con mordazas flotantes y mantenimiento económico.',
+        interactable: true,
+        zoneId: 'zone-brakes-toyota',
+        importance: 'MEDIUM'
+      },
+      {
+        id: 'p3d-toyota-shocks',
+        partId: 'part-gen-shockabsorber',
+        name: 'Amortiguadores Delanteros MacPherson',
+        systemId: 'SUSPENSION',
+        modelNodeId: 'node_toyota_shocks',
+        position: { x: 30, y: 56, z: 0.9 },
+        hotspot: { x: 30, y: 56, label: 'Amortiguadores' },
+        description: 'Columna MacPherson delantera para estabilidad y absorción urbana.',
+        interactable: true,
+        zoneId: 'zone-brakes-toyota',
+        importance: 'MEDIUM'
+      }
+    ],
+    metadata: {
+      engineFamily: '1KR-FE',
+      chassisCode: 'XP130'
+    },
+    isDemo: false,
+    license: 'CC-BY-4.0',
+    source: 'OCHE Automotive Engineering Core',
+    author: 'OCHE Technical Team'
+  },
+  {
+    id: 'model-3d-bmw-f30',
+    vehicleConfigurationId: 'vconfig-bmw-320d-f30',
+    modelName: 'BMW 320d (F30 N47/B47)',
+    make: 'BMW',
+    model: 'Serie 3',
+    engine: '2.0d TwinPower',
+    generation: 'F30',
+    yearStart: 2012,
+    yearEnd: 2019,
+    modelType: 'INTERACTIVE_VECTOR',
+    assetPath: '/assets/3d/bmw_320d_f30.svg',
+    format: 'vector/json',
+    scale: 1.0,
+    rotation: 0,
+    camera: {
+      position: { x: 0, y: 1.2, z: 4.5 },
+      target: { x: 0, y: 0, z: 0 },
+      fov: 45
+    },
+    zones: [
+      {
+        id: 'zone-engine-bmw',
+        name: 'Motor Longitudinal y Cadena Trasera',
+        summary: 'Bloque diésel 2.0 TwinPower longitudinal con distribución por cadena montada en la parte trasera del motor.',
+        color: '#ef4444',
+        icon: 'Cpu',
+        cameraPreset: 'ENGINE',
+        hotspotPosition: { x: 28, y: 36, z: 1.2 },
+        systemIds: ['ENGINE', 'COOLING', 'FUEL', 'ELECTRICAL'],
+        partIds: ['part-bmw-timingchain-kit', 'part-bmw-egr-cooler', 'part-gen-turbo']
+      },
+      {
+        id: 'zone-exhaust-bmw',
+        name: 'Refrigerador EGR y Emisiones',
+        summary: 'Módulo enfriador de recirculación de gases de escape EGR (objeto de campaña técnica oficial BMW).',
+        color: '#10b981',
+        icon: 'Zap',
+        cameraPreset: 'REAR',
+        hotspotPosition: { x: 74, y: 44, z: -1.2 },
+        systemIds: ['EMISSIONS', 'EXHAUST'],
+        partIds: ['part-bmw-egr-cooler', 'part-vw-dpf']
+      },
+      {
+        id: 'zone-drivetrain-bmw',
+        name: 'Propulsión Trasera y Transmisión',
+        summary: 'Caja automática ZF8HP / manual 6v con árbol de transmisión y diferencial trasero.',
+        color: '#8b5cf6',
+        icon: 'Settings',
+        cameraPreset: 'UNDERBODY',
+        hotspotPosition: { x: 45, y: 52, z: 0 },
+        systemIds: ['TRANSMISSION', 'DRIVETRAIN'],
+        partIds: ['part-gen-flywheel', 'part-gen-driveshaft']
+      }
+    ],
+    parts: [
+      {
+        id: 'p3d-bmw-timingchain',
+        partId: 'part-bmw-timingchain-kit',
+        name: 'Kit de Cadena de Distribución Trasera (N47/B47)',
+        systemId: 'ENGINE',
+        modelNodeId: 'node_bmw_timingchain',
+        position: { x: 26, y: 34, z: 0.8 },
+        hotspot: { x: 26, y: 34, label: 'Cadena Distribución' },
+        description: 'Cadena de distribución montada en el lado del volante motor. En N47 es crítico comprobar ruido de roce/siseo.',
+        interactable: true,
+        zoneId: 'zone-engine-bmw',
+        importance: 'CRITICAL'
+      },
+      {
+        id: 'p3d-bmw-egr-cooler',
+        partId: 'part-bmw-egr-cooler',
+        name: 'Módulo Enfriador de Válvula EGR',
+        systemId: 'EMISSIONS',
+        modelNodeId: 'node_bmw_egrcooler',
+        position: { x: 30, y: 40, z: 0.6 },
+        hotspot: { x: 30, y: 40, label: 'Enfriador EGR' },
+        description: 'Enfría los gases de escape recirculados. Sujeto a campaña de revisión por riesgo de fuga interna de anticongelante.',
+        interactable: true,
+        zoneId: 'zone-exhaust-bmw',
+        importance: 'CRITICAL'
+      },
+      {
+        id: 'p3d-bmw-turbo',
+        partId: 'part-gen-turbo',
+        name: 'Turbocompresor TwinPower Turbo',
+        systemId: 'ENGINE',
+        modelNodeId: 'node_bmw_turbo',
+        position: { x: 22, y: 42, z: 0.5 },
+        hotspot: { x: 22, y: 42, label: 'Turbo VGT' },
+        description: 'Turbocompresor con actuador electrónico de geometría variable.',
+        interactable: true,
+        zoneId: 'zone-engine-bmw',
+        importance: 'HIGH'
+      },
+      {
+        id: 'p3d-bmw-driveshaft',
+        partId: 'part-gen-driveshaft',
+        name: 'Árbol de Transmisión y Flector de Cardán',
+        systemId: 'DRIVETRAIN',
+        modelNodeId: 'node_bmw_driveshaft',
+        position: { x: 45, y: 52, z: 0 },
+        hotspot: { x: 45, y: 52, label: 'Transmisión RWD' },
+        description: 'Transmite el par al eje posterior con flectores elásticos antivibración.',
+        interactable: true,
+        zoneId: 'zone-drivetrain-bmw',
+        importance: 'MEDIUM'
+      }
+    ],
+    metadata: {
+      engineFamily: 'N47D20 / B47D20',
+      chassisCode: 'F30'
+    },
+    isDemo: false,
+    license: 'CC-BY-4.0',
+    source: 'OCHE Automotive Engineering Core',
+    author: 'OCHE Technical Team'
+  },
+  {
     id: 'model-3d-generic-car',
     vehicleConfigurationId: 'vconfig-generic-car',
     modelName: 'Vehículo Estándar Universal (Arquitectura Multi-Sistema)',

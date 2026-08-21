@@ -3,14 +3,14 @@ import { BookmarkCheck, Trash2, ArrowRightLeft, Car, Calendar, Euro, ShieldCheck
 import { CarAnalysisReport } from '../types';
 
 interface GarageHistoryProps {
-  savedReports: CarAnalysisReport[];
+  savedReports?: CarAnalysisReport[];
   onSelectReport: (report: CarAnalysisReport) => void;
   onDeleteReport: (id: string) => void;
   onStartNewScan: () => void;
 }
 
 export const GarageHistory: React.FC<GarageHistoryProps> = ({
-  savedReports,
+  savedReports = [],
   onSelectReport,
   onDeleteReport,
   onStartNewScan
@@ -29,7 +29,7 @@ export const GarageHistory: React.FC<GarageHistoryProps> = ({
     });
   };
 
-  const compareReports = savedReports.filter((r) => selectedForCompare.includes(r.id));
+  const compareReports = (savedReports || []).filter((r) => selectedForCompare.includes(r.id));
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#0A0A0C] text-white p-4 sm:p-6 max-w-5xl mx-auto">

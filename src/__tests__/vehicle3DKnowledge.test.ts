@@ -206,4 +206,264 @@ describe('FASE 7: Interactive 3D Vehicle Knowledge System', () => {
       expect(chatContext.initialPrompt).toContain('¿Podrías explicarme');
     });
   });
+
+  describe('PHASE 13: 3D System Formal Verification (10 Critical Scenarios)', () => {
+    // 1. Vehicle tiene Car3DModel cuando existe
+    it('1. Vehicle tiene Car3DModel cuando existe en el catálogo', () => {
+      const golfModel = Vehicle3DService.getModelForVehicle({ make: 'Volkswagen', model: 'Golf VII', engine: '2.0 TDI' });
+      expect(golfModel).toBeDefined();
+      expect(golfModel.id).toBe('model-3d-golf-ea288');
+
+      const peugeotModel = Vehicle3DService.getModelForVehicle({ make: 'Peugeot', model: '208', engine: '1.2 PureTech' });
+      expect(peugeotModel).toBeDefined();
+      expect(peugeotModel.id).toBe('model-3d-peugeot-puretech');
+
+      const toyotaModel = Vehicle3DService.getModelForVehicle({ make: 'Toyota', model: 'Yaris', engine: '1.0 VVT-i' });
+      expect(toyotaModel).toBeDefined();
+      expect(toyotaModel.id).toBe('model-3d-toyota-yaris');
+
+      const bmwModel = Vehicle3DService.getModelForVehicle({ make: 'BMW', model: '320d', engine: '2.0d' });
+      expect(bmwModel).toBeDefined();
+      expect(bmwModel.id).toBe('model-3d-bmw-f30');
+    });
+
+    // 2. Car3DModel pertenece al Vehicle correcto
+    it('2. Car3DModel pertenece al Vehicle correcto (make, model, engine coherentes)', () => {
+      const golfModel = Vehicle3DService.getModelById('model-3d-golf-ea288');
+      expect(golfModel.make.toLowerCase()).toContain('volkswagen');
+      expect(golfModel.model.toLowerCase()).toContain('golf');
+
+      const peugeotModel = Vehicle3DService.getModelById('model-3d-peugeot-puretech');
+      expect(peugeotModel.make.toLowerCase()).toContain('peugeot');
+      expect(peugeotModel.model.toLowerCase()).toContain('208');
+
+      const toyotaModel = Vehicle3DService.getModelById('model-3d-toyota-yaris');
+      expect(toyotaModel.make.toLowerCase()).toContain('toyota');
+      expect(toyotaModel.model.toLowerCase()).toContain('yaris');
+
+      const bmwModel = Vehicle3DService.getModelById('model-3d-bmw-f30');
+      expect(bmwModel.make.toLowerCase()).toContain('bmw');
+      expect(bmwModel.model.toLowerCase()).toContain('3');
+    });
+
+    // 3. Car3DPart puede relacionarse con Part
+    it('3. Car3DPart puede relacionarse con Part canónica en la base de conocimiento', async () => {
+      const golfModel = Vehicle3DService.getModelById('model-3d-golf-ea288');
+      const golfTimingPart = golfModel.parts.find((p) => p.partId === 'part-vw-timingkit');
+      expect(golfTimingPart).toBeDefined();
+
+      const card = await Vehicle3DService.getPartKnowledgeCard(golfTimingPart!.id, golfModel, 'ES');
+      expect(card.part).toBeDefined();
+      expect(card.part.id).toBe('part-vw-timingkit');
+    });
+
+    // 4. Car3DPart puede relacionarse con VehicleSystem
+    it('4. Car3DPart puede relacionarse con VehicleSystem estándar (ENGINE, BRAKES, etc.)', async () => {
+      const peugeotModel = Vehicle3DService.getModelById('model-3d-peugeot-puretech');
+      const wetBeltPart = peugeotModel.parts.find((p) => p.partId === 'part-peug-wetbelt');
+      expect(wetBeltPart).toBeDefined();
+      expect(wetBeltPart!.systemId).toBe('ENGINE');
+
+      const card = await Vehicle3DService.getPartKnowledgeCard(wetBeltPart!.id, peugeotModel, 'ES');
+      expect(card.system).toBeDefined();
+      expect(card.system.id).toBe('ENGINE');
+      expect(card.system.name).toContain('Motor');
+    });
+
+    // 5. Seleccionar una pieza devuelve la información correcta
+    it('5. Seleccionar una pieza devuelve la información técnica correcta (¿Qué hace?, descripción, función)', async () => {
+      const bmwModel = Vehicle3DService.getModelById('model-3d-bmw-f30');
+      const timingChainPart = bmwModel.parts.find((p) => p.partId === 'part-bmw-timingchain-kit');
+      expect(timingChainPart).toBeDefined();
+
+      const card = await Vehicle3DService.getPartKnowledgeCard(timingChainPart!.id, bmwModel, 'ES');
+      expect(card.part.name).toContain('Distribución');
+      expect(card.part.function).toBeTruthy();
+      expect(card.basicExplanation).toBeTruthy();
+      expect(card.advancedExplanation).toBeTruthy();
+    });
+
+    // 6. Una pieza puede mostrar sus problemas conocidos
+    it('6. Una pieza puede mostrar sus problemas conocidos del modelo si existen', async () => {
+      const peugeotModel = Vehicle3DService.getModelById('model-3d-peugeot-puretech');
+      const card = await Vehicle3DService.getPartKnowledgeCard('p3d-peug-wetbelt', peugeotModel, 'ES');
+
+      expect(card.knownProblems).toBeDefined();
+      expect(card.knownProblems.length).toBeGreaterThan(0);
+      const beltProblem = card.knownProblems.find((p) => p.id === 'prob-peug-wetbelt');
+      expect(beltProblem).toBeDefined();
+      expect(beltProblem?.title).toContain('Degradación');
+    });
+
+    // 7. Una pieza puede mostrar reparación y coste cuando existen
+    it('7. Una pieza puede mostrar reparación y coste orientativo cuando existen', async () => {
+      const golfModel = Vehicle3DService.getModelById('model-3d-golf-ea288');
+      const card = await Vehicle3DService.getPartKnowledgeCard('p3d-golf-waterpump', golfModel, 'ES');
+
+      expect(card.costBreakdown).toBeDefined();
+      expect(card.costBreakdown.totalEstimatedExpected).toBeGreaterThan(0);
+      expect(card.costBreakdown.currency).toBe('EUR');
+      expect(card.costBreakdown.laborHours).toBeGreaterThan(0);
+    });
+
+    // 8. Vehículo sin modelo 3D no rompe la aplicación
+    it('8. Vehículo sin modelo 3D específico no rompe la aplicación y proporciona fallback universal', () => {
+      const unknownVehicle = { make: 'FabricanteInexistente', model: 'ModeloXYZ', engine: '1.0 Desconocido' };
+      
+      // Check fallback detection
+      const hasSpecific3D = Vehicle3DService.has3DModelForVehicle(unknownVehicle);
+      expect(hasSpecific3D).toBe(false);
+
+      // Must resolve fallback model without throwing exception
+      const fallbackModel = Vehicle3DService.getModelForVehicle(unknownVehicle);
+      expect(fallbackModel).toBeDefined();
+      expect(fallbackModel.id).toBeTruthy();
+      expect(fallbackModel.parts.length).toBeGreaterThan(0);
+    });
+
+    // 9. El 3D no modifica el resultado del análisis
+    it('9. El 3D es una capa de visualización de conocimiento y no muta el informe de análisis original', async () => {
+      const mockReport: CarAnalysisReport = {
+        id: 'rep-test-immutable',
+        identity: {
+          make: 'Volkswagen',
+          model: 'Golf VII',
+          engine: '2.0 TDI',
+          year: 2015,
+          marketPriceEstimate: { min: 10000, max: 13000, expected: 11500 }
+        },
+        globalScore: 82,
+        generalCondition: 'Bueno',
+        detectedIssues: [],
+        repairEstimates: {
+          urgentRepairs: [],
+          recommendedRepairs: [],
+          optionalRepairs: []
+        },
+        negotiationAdvice: { fairOfferPrice: 11000, maxTargetPrice: 11500, arguments: [] },
+        createdAt: new Date().toISOString()
+      } as any;
+
+      const reportSnapshotBefore = JSON.stringify(mockReport);
+      const golfModel = Vehicle3DService.getModelById('model-3d-golf-ea288');
+
+      // Interacting with 3D knowledge cards
+      await Vehicle3DService.getPartKnowledgeCard('p3d-golf-turbo', golfModel, 'ES', mockReport);
+      await Vehicle3DService.getPartKnowledgeCard('p3d-golf-waterpump', golfModel, 'ES', mockReport);
+
+      const reportSnapshotAfter = JSON.stringify(mockReport);
+      expect(reportSnapshotAfter).toBe(reportSnapshotBefore);
+    });
+
+    // 10. El 3D no convierte conocimiento del modelo en diagnóstico del vehículo
+    it('10. El 3D separa estrictamente conocimiento genérico del modelo ("Problemas conocidos") de observaciones reales detectadas', async () => {
+      const golfModel = Vehicle3DService.getModelById('model-3d-golf-ea288');
+
+      // Scenario A: Clean report (no observations for turbo)
+      const cleanReport: Partial<CarAnalysisReport> = {
+        identity: { make: 'Volkswagen', model: 'Golf VII', engine: '2.0 TDI', year: 2015, marketPriceEstimate: { min: 10000, max: 13000, expected: 11500 } },
+        repairEstimates: { urgentRepairs: [], recommendedRepairs: [], optionalRepairs: [] }
+      } as any;
+
+      const cardClean = await Vehicle3DService.getPartKnowledgeCard('p3d-golf-turbo', golfModel, 'ES', cleanReport as CarAnalysisReport);
+      
+      // Must NOT claim that the user's specific turbo is broken
+      expect(cardClean.observationStatus).toBe('KNOWN');
+      expect(cardClean.observationEvidence).toBeUndefined();
+      // But knowledge of the model remains available
+      expect(cardClean.part.function).toBeTruthy();
+      expect(cardClean.basicExplanation).toBeTruthy();
+
+      // Scenario B: Report with detected defect on turbo
+      const defectReport: Partial<CarAnalysisReport> = {
+        identity: { make: 'Volkswagen', model: 'Golf VII', engine: '2.0 TDI', year: 2015, marketPriceEstimate: { min: 10000, max: 13000, expected: 11500 } },
+        repairEstimates: {
+          urgentRepairs: [{ partName: 'Turbocompresor', estimatedCost: 900, whyAttentionNeeded: 'Fuga de aceite visible', priority: 'Alta' }],
+          recommendedRepairs: [],
+          optionalRepairs: []
+        }
+      } as any;
+
+      const cardDefect = await Vehicle3DService.getPartKnowledgeCard('p3d-golf-turbo', golfModel, 'ES', defectReport as CarAnalysisReport);
+      expect(cardDefect.observationStatus).toBe('OBSERVED');
+      expect(cardDefect.observationEvidence).toBeDefined();
+      expect(cardDefect.observationEvidence?.details).toContain('Fuga de aceite visible');
+    });
+  });
+
+  describe('PHASE 14: 3D Real-World Validation Suite', () => {
+    // 1. Audit of the 4 Models
+    it('Audits the 4 canonical models with complete structural integrity', () => {
+      const models = [
+        { id: 'model-3d-golf-ea288', make: 'Volkswagen', model: 'Golf VII', engine: '2.0 TDI' },
+        { id: 'model-3d-peugeot-puretech', make: 'Peugeot', model: '208', engine: '1.2 PureTech' },
+        { id: 'model-3d-toyota-yaris', make: 'Toyota', model: 'Yaris', engine: '1.0 VVT-i' },
+        { id: 'model-3d-bmw-f30', make: 'BMW', model: 'Serie 3', engine: '2.0d TwinPower' }
+      ];
+
+      models.forEach((spec) => {
+        const m = Vehicle3DService.getModelById(spec.id);
+        expect(m).toBeDefined();
+        expect(m.make).toBe(spec.make);
+        expect(m.model).toBe(spec.model);
+        expect(m.engine).toBe(spec.engine);
+        expect(m.zones.length).toBeGreaterThanOrEqual(3);
+        expect(m.parts.length).toBeGreaterThanOrEqual(4);
+
+        // Verify each part has valid system and hotspot
+        m.parts.forEach((p) => {
+          expect(p.systemId).toBeTruthy();
+          expect(p.hotspot.x).toBeGreaterThanOrEqual(0);
+          expect(p.hotspot.x).toBeLessThanOrEqual(100);
+          expect(p.hotspot.y).toBeGreaterThanOrEqual(0);
+          expect(p.hotspot.y).toBeLessThanOrEqual(100);
+          expect(p.importance).toMatch(/CRITICAL|HIGH|MEDIUM|LOW/);
+        });
+      });
+    });
+
+    // 2. Camera Presets
+    it('Verifies all 7 camera presets exist and have valid angles and zoom', () => {
+      const requiredPresets = ['FULL_CAR', 'ENGINE', 'FRONT', 'REAR', 'UNDERBODY', 'INTERIOR', 'SIDE'];
+      const presetIds = CAMERA_PRESETS.map((p) => p.id);
+
+      requiredPresets.forEach((pId) => {
+        expect(presetIds).toContain(pId);
+        const preset = CAMERA_PRESETS.find((p) => p.id === pId);
+        expect(preset).toBeDefined();
+        expect(preset!.zoom).toBeGreaterThan(0);
+        expect(typeof preset!.rotationAngle).toBe('number');
+      });
+    });
+
+    // 3. Fallback when vehicle or part is missing
+    it('Handles unknown or corrupt model id gracefully without throwing', () => {
+      const fallback = Vehicle3DService.getModelById('corrupt-non-existent-id');
+      expect(fallback).toBeDefined();
+      expect(fallback.id).toBe('model-3d-generic-car');
+      expect(fallback.parts.length).toBeGreaterThan(0);
+    });
+
+    // 4. Missing part data returns safe card with UNKNOWN / default structure without crashing
+    it('Handles non-existent partId safely in knowledge card generation', async () => {
+      const genericModel = Vehicle3DService.getModelById('model-3d-generic-car');
+      const card = await Vehicle3DService.getPartKnowledgeCard('part-non-existent-12345', genericModel, 'ES');
+      expect(card).toBeDefined();
+      expect(card.part).toBeDefined();
+      expect(card.part.name).toBeTruthy();
+      expect(card.basicExplanation).toBeTruthy();
+      expect(card.costBreakdown).toBeDefined();
+    });
+
+    // 5. Chat Context generation
+    it('Generates contextual prompt for AI assistant correctly', async () => {
+      const peugeotModel = Vehicle3DService.getModelById('model-3d-peugeot-puretech');
+      const card = await Vehicle3DService.getPartKnowledgeCard('p3d-peug-wetbelt', peugeotModel, 'ES');
+      const chatContext = Vehicle3DService.generateChatContext(card, 'Peugeot 208 1.2 PureTech');
+
+      expect(chatContext.initialPrompt).toContain('Peugeot 208');
+      expect(chatContext.initialPrompt).toContain('Correa');
+      expect(chatContext.partName).toContain('Correa');
+    });
+  });
 });

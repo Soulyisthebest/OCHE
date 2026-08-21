@@ -25,8 +25,79 @@ export interface AnalyticsEventPayload {
   properties?: Record<string, string | number | boolean>;
 }
 
+export interface PilotSessionState {
+  sessionId: string;
+  sessionStarted: string;
+  identificationMethod: 'photo' | 'manual' | 'both' | 'none';
+  vehicleIdentified: string | null;
+  vehicleConfirmed: boolean;
+  photosProvided: number;
+  analysisCompleted: boolean;
+  reportViewed: boolean;
+  shareClicked: boolean;
+  feedbackSubmitted: {
+    helpful: boolean | null;
+    comment?: string;
+    timestamp: string;
+  } | null;
+}
+
 export class AnalyticsService {
   private static eventsLog: AnalyticsEventPayload[] = [];
+  private static activePilotSession: PilotSessionState = AnalyticsService.createInitialPilotSession();
+
+  private static createInitialPilotSession(): PilotSessionState {
+    return {
+      sessionId: `pilot_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      sessionStarted: new Date().toISOString(),
+      identificationMethod: 'none',
+      vehicleIdentified: null,
+      vehicleConfirmed: false,
+      photosProvided: 0,
+      analysisCompleted: false,
+      reportViewed: false,
+      shareClicked: false,
+      feedbackSubmitted: null
+    };
+  }
+
+  /**
+   * Start or reset a pilot session locally (in memory & localStorage)
+   */
+  static startPilotSession(): PilotSessionState {
+    this.activePilotSession = this.createInitialPilotSession();
+    this.persistPilotSession();
+    return this.activePilotSession;
+  }
+
+  /**
+   * Update active pilot session fields
+   */
+  static updatePilotSession(patch: Partial<PilotSessionState>): PilotSessionState {
+    this.activePilotSession = {
+      ...this.activePilotSession,
+      ...patch
+    };
+    this.persistPilotSession();
+    return this.activePilotSession;
+  }
+
+  /**
+   * Retrieve active pilot session data
+   */
+  static getActivePilotSession(): PilotSessionState {
+    return { ...this.activePilotSession };
+  }
+
+  private static persistPilotSession() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('oche_active_pilot_session', JSON.stringify(this.activePilotSession));
+      }
+    } catch {
+      // Local storage may be restricted in sandboxes; memory state persists
+    }
+  }
 
   /**
    * Track non-sensitive user action for product analytics

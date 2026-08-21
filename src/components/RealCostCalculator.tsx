@@ -5,38 +5,48 @@ import { CountryEngine } from '../services/CountryEngine';
 import { CountryProfile } from '../types/country';
 
 interface RealCostCalculatorProps {
-  initialCost: RealCostBreakdown;
-  repairs: RepairItem[];
+  initialCost?: RealCostBreakdown;
+  repairs?: RepairItem[];
   countryProfile?: CountryProfile;
   onCostChange?: (updatedTotalMin: number, updatedTotalMax: number) => void;
 }
 
 export const RealCostCalculator: React.FC<RealCostCalculatorProps> = ({
   initialCost,
-  repairs,
+  repairs = [],
   countryProfile,
   onCostChange
 }) => {
   const profile = countryProfile || CountryEngine.getCountryProfile();
-  const [askingPrice, setAskingPrice] = useState<number>(initialCost.askingPrice);
+  const safeInitialCost: RealCostBreakdown = initialCost || {
+    askingPrice: 8500,
+    transferFees: 350,
+    initialMaintenanceMin: 200,
+    initialMaintenanceMax: 400,
+    visibleRepairsMin: 0,
+    visibleRepairsMax: 0,
+    totalMin: 9050,
+    totalMax: 9250
+  };
+  const [askingPrice, setAskingPrice] = useState<number>(safeInitialCost.askingPrice || 8500);
   const [transferFee, setTransferFee] = useState<number>(
-    initialCost.transferFees || CountryEngine.calculateRegistrationCost(askingPrice, profile)
+    safeInitialCost.transferFees || CountryEngine.calculateRegistrationCost(askingPrice, profile)
   );
   const [includeMaintenance, setIncludeMaintenance] = useState<boolean>(true);
   
   // Track selected optional repair toggles
   const [selectedRepairIds, setSelectedRepairIds] = useState<string[]>(
-    repairs.map((r) => r.id)
+    (repairs || []).map((r) => r.id)
   );
 
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
   // Maintenance initial cost estimate
-  const maintMin = includeMaintenance ? (initialCost.initialMaintenanceMin || 200) : 0;
-  const maintMax = includeMaintenance ? (initialCost.initialMaintenanceMax || 400) : 0;
+  const maintMin = includeMaintenance ? (safeInitialCost.initialMaintenanceMin || 200) : 0;
+  const maintMax = includeMaintenance ? (safeInitialCost.initialMaintenanceMax || 400) : 0;
 
   // Selected repairs cost sum
-  const activeRepairs = repairs.filter((r) => selectedRepairIds.includes(r.id));
+  const activeRepairs = (repairs || []).filter((r) => selectedRepairIds.includes(r.id));
   const repairsMin = activeRepairs.reduce((acc, r) => acc + r.totalEstimatedMin, 0);
   const repairsMax = activeRepairs.reduce((acc, r) => acc + r.totalEstimatedMax, 0);
 
@@ -187,13 +197,13 @@ export const RealCostCalculator: React.FC<RealCostCalculatorProps> = ({
           </div>
 
           {/* Row 3: Repairs checklist toggle */}
-          {repairs.length > 0 && (
+          {repairs && repairs.length > 0 && (
             <div className="bg-black p-4 rounded-xl border border-white/10 space-y-2.5">
               <span className="font-bold text-white block mb-1">
                 4. Reparaciones o mejoras aconsejadas ({activeRepairs.length} seleccionadas)
               </span>
 
-              {repairs.map((rep) => {
+              {(repairs || []).map((rep) => {
                 const isChecked = selectedRepairIds.includes(rep.id);
                 return (
                   <div

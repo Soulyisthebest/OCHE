@@ -382,6 +382,38 @@ Se ha implementado formalmente el **Global Vehicle Knowledge Core** de OCHE / CA
 - **Indicadores de Modo de Prueba (`REAL_TEST_MODE`)**: Distintivos visibles `[MODO DEMO]` vs `[ANÁLISIS IA]`.
 - **Avisos de Confianza y Límites Legales**: Disclaimers claros que indican que OCHE no sustituye una inspección profesional.
 
+---
+
+## 🏎️ FASE 13: SISTEMA 3D INTERACTIVO & CADENA DE CONOCIMIENTO (AUDITORÍA FINAL)
+
+### 1. Resumen de Implementación
+- **Cadena de Relaciones Completa**: `Vehicle -> Car3DModel -> Car3DPart[] -> VehicleSystem -> Part -> KnownProblem -> Repair -> CostEstimate`.
+- **4 Modelos Canónicos Completos**:
+  1. *Volkswagen Golf VII 2.0 TDI* (`model-3d-golf-ea288`)
+  2. *Peugeot 208 1.2 PureTech* (`model-3d-peugeot-puretech`)
+  3. *Toyota Yaris 1.0 VVT-i* (`model-3d-toyota-yaris`)
+  4. *BMW 320d F30* (`model-3d-bmw-f30`)
+  5. *Plantilla Arquitectónica Universal Fallback* (`model-3d-generic-car`)
+- **Interacción & Animación**:
+  - Soporta estados `idle`, `highlight`, `explode` (despiece por capas) e `inspect` (enfoque de cámara).
+  - Rotación 360º con ratón y toques táctiles, zoom progresivo y presets de cámara angulares.
+- **Tarjeta de Conocimiento de Pieza**:
+  - 🔧 Pieza y Ubicación.
+  - ⚙️ Sistema estándar asociado.
+  - 💡 ¿Qué hace? con conmutador *Fácil (ELI5)* / *Detallado*.
+  - ⚠️ Problemas conocidos endémicos del modelo.
+  - 💰 Baremo dinámico de reparación (OEM / Aftermarket / Usada / Mano de obra) por país activo.
+- **Separación Ontológica Estricta**:
+  - El 3D representa conocimiento técnico del MODELO; no afirma defectos en el vehículo específico fotografiado a menos que exista evidencia explícita en el informe.
+  - La visualización 3D es puramente inmutable y no modifica el resultado del análisis.
+- **Accesibilidad**:
+  - Botón conmutable "Sin 3D" (`AccessibilityPartsList.tsx`) para navegación 2D accesible.
+- **Verificación Técnica**:
+  - `npm test`: 15 suites / 144 tests superados (PASS).
+  - `npm run lint`: 0 errores.
+  - `npm run build`: Compilación exitosa en `dist/`.
+
+
 
 
 

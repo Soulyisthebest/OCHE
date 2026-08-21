@@ -137,31 +137,42 @@ export class VehicleResolverService {
       const reasons: string[] = [];
       let matchedCode: string | undefined = undefined;
 
-      // Brand matching (High weight)
+      // Brand matching (Strict prior: if brand is provided, mismatch must be discarded)
       if (brand) {
         if (veh.brand.brandId === brand.brandId) {
           score += 35;
           reasons.push(`Marca coincidente: ${veh.brand.officialName}`);
         } else {
-          // Incompatible brand -> Skip
+          // Incompatible brand -> Discard
           continue;
         }
-      } else if (parsedInput.brandHint && veh.brand.officialName.toLowerCase().includes(parsedInput.brandHint.toLowerCase())) {
-        score += 30;
-        reasons.push(`Marca inferida: ${veh.brand.officialName}`);
+      } else if (parsedInput.brandHint) {
+        if (veh.brand.officialName.toLowerCase().includes(parsedInput.brandHint.toLowerCase())) {
+          score += 30;
+          reasons.push(`Marca inferida: ${veh.brand.officialName}`);
+        } else {
+          // Incompatible brand -> Discard
+          continue;
+        }
       }
 
-      // Model matching
+      // Model matching (Strict prior: if model is provided, mismatch must be discarded)
       if (model) {
         if (veh.model.modelId === model.modelId) {
           score += 30;
           reasons.push(`Modelo coincidente: ${veh.model.name}`);
         } else {
+          // Incompatible model -> Discard
           continue;
         }
-      } else if (parsedInput.modelHint && veh.model.name.toLowerCase().includes(parsedInput.modelHint.toLowerCase())) {
-        score += 25;
-        reasons.push(`Modelo inferido: ${veh.model.name}`);
+      } else if (parsedInput.modelHint) {
+        if (veh.model.name.toLowerCase().includes(parsedInput.modelHint.toLowerCase())) {
+          score += 25;
+          reasons.push(`Modelo inferido: ${veh.model.name}`);
+        } else {
+          // Incompatible model -> Discard
+          continue;
+        }
       }
 
       // Year & Generation matching

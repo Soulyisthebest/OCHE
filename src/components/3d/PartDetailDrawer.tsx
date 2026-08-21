@@ -277,12 +277,12 @@ export const PartDetailDrawer: React.FC<PartDetailDrawerProps> = ({
       {/* Tab 2: WHAT CAN FAIL? */}
       {activeTab === 'FAILURES' && (
         <div className="space-y-3 text-xs animate-fade-in">
-          {knownProblems.length > 0 ? (
+          {knownProblems && knownProblems.length > 0 ? (
             <div className="space-y-2">
               <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider block">
                 ⚠️ Problemas Conocidos del Modelo ({knownProblems.length}):
               </span>
-              {knownProblems.map((prob) => (
+              {(knownProblems || []).map((prob) => (
                 <div key={prob.id} className="bg-black/50 p-3.5 rounded-2xl border border-amber-500/30 space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-white uppercase">{prob.title}</h4>
@@ -292,13 +292,13 @@ export const PartDetailDrawer: React.FC<PartDetailDrawerProps> = ({
                   </div>
                   <p className="text-white/80 font-bold leading-relaxed">{prob.description}</p>
 
-                  {prob.symptoms.length > 0 && (
+                  {prob.symptoms && prob.symptoms.length > 0 && (
                     <div className="pt-1">
                       <span className="text-[9px] font-bold text-amber-400/80 uppercase block mb-1">
                         Síntomas habituales:
                       </span>
                       <ul className="list-disc list-inside space-y-0.5 text-white/70">
-                        {prob.symptoms.map((sym, idx) => (
+                        {(prob.symptoms || []).map((sym, idx) => (
                           <li key={idx}>{sym}</li>
                         ))}
                       </ul>
@@ -313,7 +313,7 @@ export const PartDetailDrawer: React.FC<PartDetailDrawerProps> = ({
                 ⚠️ Modos de fallo y síntomas generales:
               </span>
               <ul className="list-disc list-inside space-y-1 text-white/80 font-bold leading-relaxed">
-                {part.failureModes.map((fm, idx) => (
+                {(part?.failureModes || []).map((fm, idx) => (
                   <li key={idx}>{fm}</li>
                 ))}
               </ul>
@@ -321,13 +321,13 @@ export const PartDetailDrawer: React.FC<PartDetailDrawerProps> = ({
           )}
 
           {/* Warning Signs */}
-          {part.symptoms.length > 0 && (
+          {part?.symptoms && part.symptoms.length > 0 && (
             <div className="bg-black/50 p-3.5 rounded-2xl border border-white/5 space-y-1.5">
               <span className="text-[10px] font-black text-white/50 uppercase tracking-wider block">
                 🚨 Síntomas de advertencia al conducir:
               </span>
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {part.symptoms.map((sym, idx) => (
+                {(part.symptoms || []).map((sym, idx) => (
                   <span key={idx} className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[11px] font-bold text-white/80">
                     {sym}
                   </span>
@@ -342,7 +342,7 @@ export const PartDetailDrawer: React.FC<PartDetailDrawerProps> = ({
       {activeTab === 'INSPECTION' && (
         <div className="space-y-3 text-xs animate-fade-in">
           {/* Safety Warning */}
-          {inspectionGuide.safetyWarnings.length > 0 && (
+          {inspectionGuide?.safetyWarnings && inspectionGuide.safetyWarnings.length > 0 && (
             <div className="p-3 rounded-2xl bg-red-950/60 border border-red-500/40 text-red-300 space-y-1">
               <span className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
                 <ShieldAlert className="w-3.5 h-3.5" />
@@ -360,7 +360,7 @@ export const PartDetailDrawer: React.FC<PartDetailDrawerProps> = ({
               🔍 Pasos de Comprobación Práctica:
             </span>
             <div className="space-y-1.5">
-              {inspectionGuide.howToCheck.map((step, idx) => (
+              {(inspectionGuide?.howToCheck || []).map((step, idx) => (
                 <div key={idx} className="flex items-start gap-2 text-white/80 font-bold leading-relaxed">
                   <span className="text-emerald-400 font-black">•</span>
                   <span>{step}</span>

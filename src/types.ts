@@ -190,3 +190,4 @@ export * from './types/vehicleEngine';
 export * from './types/analysisSession';
 export * from './types/evidence';
 export * from './types/risk';
+export * from './types/vehicle3DAsset';

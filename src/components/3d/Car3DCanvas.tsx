@@ -160,7 +160,7 @@ export const Car3DCanvas: React.FC<Car3DCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[420px] sm:h-[480px] bg-gradient-to-b from-[#101015] to-[#0A0A0D] rounded-3xl border border-white/10 overflow-hidden select-none flex flex-col justify-between shadow-2xl"
+      className="relative w-full h-[400px] sm:h-[480px] bg-gradient-to-b from-[#101015] to-[#0A0A0D] rounded-3xl border border-white/10 overflow-hidden select-none flex flex-col justify-between shadow-2xl touch-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

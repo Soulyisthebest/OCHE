@@ -31,6 +31,7 @@ import {
   DEFAULT_INSPECTION_GUIDES
 } from '../data/car3DModelsDatabase';
 import { GLOBAL_PARTS } from '../data/globalVehicleDatabase';
+import { Car3DAssetPipeline } from './Car3DAssetPipeline';
 
 export class Vehicle3DService {
   /**
@@ -47,6 +48,57 @@ export class Vehicle3DService {
     const found = CANONICAL_3D_MODELS.find((m) => m.id === modelId);
     if (found) return found;
     return CANONICAL_3D_MODELS.find((m) => m.id === 'model-3d-generic-car') || CANONICAL_3D_MODELS[0];
+  }
+
+  /**
+   * Check if a specific 3D model exists for the vehicle (returns false if only fallback/generic available)
+   */
+  static has3DModelForVehicle(vehicleInput?: {
+    make?: string;
+    model?: string;
+    engine?: string;
+    year?: number;
+    configurationId?: string;
+  }): boolean {
+    if (!vehicleInput) return false;
+    const { make = '', model = '', engine = '' } = vehicleInput;
+    const makeLower = make.toLowerCase();
+    const modelLower = model.toLowerCase();
+    const engineLower = engine.toLowerCase();
+
+    // 1. Volkswagen Golf EA288
+    if (
+      (makeLower.includes('volkswagen') || makeLower.includes('vw')) &&
+      (modelLower.includes('golf') || modelLower.includes('passat') || modelLower.includes('leon') || modelLower.includes('octavia'))
+    ) {
+      return true;
+    }
+
+    // 2. Peugeot 208 / PureTech
+    if (
+      (makeLower.includes('peugeot') || makeLower.includes('citroen') || makeLower.includes('opel') || makeLower.includes('ds')) &&
+      (modelLower.includes('208') || modelLower.includes('2008') || modelLower.includes('c3') || engineLower.includes('puretech'))
+    ) {
+      return true;
+    }
+
+    // 3. Toyota Yaris 1.0 VVT-i
+    if (
+      makeLower.includes('toyota') &&
+      (modelLower.includes('yaris') || modelLower.includes('aygo') || engineLower.includes('1kr') || engineLower.includes('vvt-i'))
+    ) {
+      return true;
+    }
+
+    // 4. BMW 320d F30
+    if (
+      makeLower.includes('bmw') &&
+      (modelLower.includes('320') || modelLower.includes('318') || modelLower.includes('serie 3') || modelLower.includes('f30') || engineLower.includes('n47') || engineLower.includes('b47'))
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -85,7 +137,28 @@ export class Vehicle3DService {
       if (peug) return peug;
     }
 
-    // Default to first canonical or generic model
+    // 3. Toyota Yaris 1.0 VVT-i
+    if (
+      makeLower.includes('toyota') &&
+      (modelLower.includes('yaris') || modelLower.includes('aygo') || engineLower.includes('1kr') || engineLower.includes('vvt-i'))
+    ) {
+      const yaris = CANONICAL_3D_MODELS.find((m) => m.id === 'model-3d-toyota-yaris');
+      if (yaris) return yaris;
+    }
+
+    // 4. BMW 320d F30
+    if (
+      makeLower.includes('bmw') &&
+      (modelLower.includes('320') || modelLower.includes('318') || modelLower.includes('serie 3') || modelLower.includes('f30') || engineLower.includes('n47') || engineLower.includes('b47'))
+    ) {
+      const bmw = CANONICAL_3D_MODELS.find((m) => m.id === 'model-3d-bmw-f30');
+      if (bmw) return bmw;
+    }
+
+    // Default to generic universal template or first canonical model
+    const generic = CANONICAL_3D_MODELS.find((m) => m.id === 'model-3d-generic-car');
+    if (generic) return generic;
+
     return CANONICAL_3D_MODELS.find((m) => m.id === 'model-3d-golf-ea288') || CANONICAL_3D_MODELS[0];
   }
 
@@ -513,4 +586,77 @@ export class Vehicle3DService {
     }
     return evidenceMap;
   }
+
+  // --- FASE 15: 3D Asset Pipeline & Prototype Methods ---
+
+  /**
+   * Retrieve formal Car3DAsset specification for a vehicle
+   */
+  static async get3DAsset(vehicleId: string) {
+    const { local3DAssetProvider } = await import('./Vehicle3DAssetProvider');
+    return local3DAssetProvider.getAsset(vehicleId);
+  }
+
+  /**
+   * Check if a 3D asset is available for the given vehicle
+   */
+  static async has3DAsset(vehicleId: string) {
+    const { local3DAssetProvider } = await import('./Vehicle3DAssetProvider');
+    return local3DAssetProvider.hasAsset(vehicleId);
+  }
+
+  /**
+   * Evaluate optimization metrics (polygons, textures, mobile budget) for an asset
+   */
+  static evaluateAssetOptimization(asset: any) {
+    return Car3DAssetPipeline.evaluateAssetOptimization(asset);
+  }
+
+  /**
+   * Link a 3D asset part to the Knowledge Engine
+   */
+  static async linkAssetPartToKnowledge(assetPart: any, vehicleId: string) {
+    return Car3DAssetPipeline.link3DPartToKnowledge(assetPart, vehicleId);
+  }
+
+  /**
+   * Validate if an articulated interaction is supported without fake simulation
+   */
+  static validateAssetInteraction(asset: any, interaction: any) {
+    return Car3DAssetPipeline.validateInteraction(asset, interaction);
+  }
+
+  /**
+   * Get non-diagnostic safety disclaimer
+   */
+  static getNonDiagnosticNotice(): string {
+    return Car3DAssetPipeline.getNonDiagnosticSafetyNotice();
+  }
+
+  // --- FASE 16: First Real 3D Asset Integration Methods ---
+
+  /**
+   * Loads and profiles a vehicle's 3D asset with real GLB analysis and state detection
+   */
+  static async loadRealGLBAsset(vehicleId: string) {
+    const { GLBAssetLoaderService } = await import('./GLBAssetLoaderService');
+    return GLBAssetLoaderService.loadVehicle3DAsset(vehicleId);
+  }
+
+  /**
+   * Parse a raw GLB binary buffer
+   */
+  static async parseGLBBuffer(buffer: ArrayBuffer) {
+    const { GLBAssetLoaderService } = await import('./GLBAssetLoaderService');
+    return GLBAssetLoaderService.parseGLBBuffer(buffer);
+  }
+
+  /**
+   * Map GLB mesh nodes directly to Car3DAssetParts
+   */
+  static async mapGLBNodesToParts(nodeNames: string[], baseVehicleId: string) {
+    const { GLBAssetLoaderService } = await import('./GLBAssetLoaderService');
+    return GLBAssetLoaderService.mapGLBNodesToParts(nodeNames, baseVehicleId);
+  }
 }
+

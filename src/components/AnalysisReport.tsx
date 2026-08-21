@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, CheckCircle2, AlertTriangle, XCircle, Calculator, Wrench,
   Compass, BookmarkCheck, Share2, ChevronDown, ChevronUp, FileText, Info,
@@ -56,10 +56,16 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
     );
   };
 
+  useEffect(() => {
+    AnalyticsService.trackReportViewed(report.id, `${report.identity.make} ${report.identity.model}`);
+    AnalyticsService.updatePilotSession({ reportViewed: true });
+  }, [report.id, report.identity.make, report.identity.model]);
+
   const handleShare = async () => {
     const text = `🚗 OCHE / CARCHECK AI - Análisis de ${report.identity.make} ${report.identity.model} (${report.score}/100) en ${profile.countryName}. Coste Real: ${CountryEngine.formatMoney(report.realCost.totalMin, profile)} - ${CountryEngine.formatMoney(report.realCost.totalMax, profile)}`;
     
     AnalyticsService.trackReportShared(report.id, 'clipboard_or_share');
+    AnalyticsService.updatePilotSession({ shareClicked: true });
 
     if (navigator.share) {
       try {
@@ -74,16 +80,24 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
       }
     }
 
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text);
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {});
+      }
+    } catch {
+      // Ignore clipboard permission errors in iframe
     }
     setShowShareToast(true);
     setTimeout(() => setShowShareToast(false), 3000);
   };
 
   const copySellerQuestion = (text: string, idx: number) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text);
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {});
+      }
+    } catch {
+      // Ignore clipboard permission errors in iframe
     }
     setCopiedQuestionIdx(idx);
     setTimeout(() => setCopiedQuestionIdx(null), 2000);
@@ -92,6 +106,13 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
   const handleFeedbackSubmit = (rating: 'helpful' | 'not_helpful') => {
     setFeedbackRating(rating);
     AnalyticsService.trackFeedback(report.id, rating, feedbackText);
+    AnalyticsService.updatePilotSession({
+      feedbackSubmitted: {
+        helpful: rating === 'helpful',
+        comment: feedbackText.trim() || undefined,
+        timestamp: new Date().toISOString()
+      }
+    });
     setFeedbackSubmitted(true);
   };
 
@@ -112,14 +133,51 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
   // Concise key reasons for the recommendation (max 3-5)
   const keyReasons = [
     report.score >= 75
-      ? `Fiabilidad global alta del bloque ${report.identity.engine || 'motor'} con buen historial de mantenimiento.`
+      ? `Fiabilidad global alta del bloque ${report.identity?.engine || 'motor'} con buen historial de mantenimiento.`
       : `Bloque motor con puntos críticos documentados que requieren inspección exhaustiva.`,
     `Precio anunciado (${askingPrice.toLocaleString('es-ES')} €) ${dualScore.dealScore >= 70 ? 'se sitúa en rango razonable' : 'debe negociarse para absorber puesta a punto'}.`,
-    `Inversión total inicial estimada de puesta a punto entre ${CountryEngine.formatMoney(report.realCost.totalMin, profile)} y ${CountryEngine.formatMoney(report.realCost.totalMax, profile)}.`,
+    `Inversión total inicial estimada de puesta a punto entre ${CountryEngine.formatMoney(report.realCost?.totalMin || 0, profile)} y ${CountryEngine.formatMoney(report.realCost?.totalMax || 0, profile)}.`,
     report.repairs && report.repairs.length > 0
       ? `Se detectan ${report.repairs.length} elementos de desgaste prioritarios a verificar en taller.`
       : `Sin averías estructurales graves detectadas en los puntos revisados.`
   ];
+
+  // Safely extract pros and cons with fallback support
+  const prosList: string[] =
+    (report as any).pros ||
+    (report.modelProsCons
+      ? report.modelProsCons.filter((p) => p.type === 'pro').map((p) => p.title)
+      : []) ||
+    [];
+
+  if (prosList.length === 0) {
+    if (report.score >= 75) {
+      prosList.push('Mecánica contrastada con amplia disponibilidad de repuestos');
+      prosList.push('Mantenimiento periódico asequible en talleres multimarca');
+      prosList.push('Consumo y emisiones equilibrados para su categoría');
+    } else {
+      prosList.push('Disponibilidad regular de recambios y consumibles en el mercado');
+      prosList.push('Arquitectura mecánica conocida por la mayoría de talleres');
+    }
+  }
+
+  const consList: string[] =
+    (report as any).cons ||
+    (report.modelProsCons
+      ? report.modelProsCons
+          .filter((p) => p.type === 'con' || p.type === 'known_issue')
+          .map((p) => p.title)
+      : []) ||
+    [];
+
+  if (consList.length === 0) {
+    if (report.score < 80) {
+      consList.push('Requiere verificación rigurosa de facturas de mantenimiento preventivo');
+      consList.push('Desgaste por kilometraje acumulado a revisar en elevador');
+    } else {
+      consList.push('Vigilancia de desgastes habituales por edad y kilometraje');
+    }
+  }
 
   return (
     <div className={`min-h-[calc(100vh-4rem)] bg-[#0A0A0C] text-white p-4 sm:p-6 max-w-5xl mx-auto space-y-8 animate-fade-in ${profile.direction === 'rtl' ? 'rtl' : 'ltr'}`}>
@@ -355,7 +413,7 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
           </h3>
 
           <div className="space-y-2">
-            {report.pros.map((p, idx) => (
+            {prosList.map((p, idx) => (
               <div key={idx} className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs text-white/90 font-medium flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
                 <span>{p}</span>
@@ -372,7 +430,7 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
           </h3>
 
           <div className="space-y-2">
-            {report.cons.map((c, idx) => (
+            {consList.map((c, idx) => (
               <div key={idx} className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs text-white/90 font-medium flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
                 <span>{c}</span>
@@ -561,14 +619,14 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
       </div>
 
       {/* ============================================================ */}
-      {/* FEEDBACK MECANISMO LOCAL (SECTION 16 USER SPEC) */}
+      {/* FEEDBACK MECANISMO LOCAL — FASE 12 PILOTO */}
       {/* ============================================================ */}
       <div className="bg-[#16161D] border border-white/10 rounded-[28px] p-6 shadow-2xl space-y-3 text-center">
         <h4 className="text-xs font-black uppercase tracking-widest text-cyan-400">
-          ¿Te ha ayudado este análisis?
+          ¿Te ha ayudado OCHE?
         </h4>
         <p className="text-xs text-white/60 max-w-md mx-auto">
-          Tu valoración nos ayuda a calibrar la precisión de las estimaciones (guardado local sin envío a terceros).
+          Tu valoración nos ayuda a calibrar la precisión del análisis (guardado localmente en esta sesión sin envío a terceros).
         </p>
 
         {feedbackSubmitted ? (
@@ -581,22 +639,26 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => handleFeedbackSubmit('helpful')}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-white/10 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer"
+                className={`min-h-[44px] px-5 py-2.5 rounded-xl text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+                  feedbackRating === 'helpful' ? 'bg-emerald-600 ring-2 ring-emerald-400' : 'bg-white/10 hover:bg-emerald-600'
+                }`}
               >
                 <ThumbsUp className="w-4 h-4 text-emerald-400" />
-                <span>👍 Sí, me ha ayudado</span>
+                <span>👍 Sí</span>
               </button>
 
               <button
                 onClick={() => handleFeedbackSubmit('not_helpful')}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-white/10 hover:bg-red-600 text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer"
+                className={`min-h-[44px] px-5 py-2.5 rounded-xl text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+                  feedbackRating === 'not_helpful' ? 'bg-red-600 ring-2 ring-red-400' : 'bg-white/10 hover:bg-red-600'
+                }`}
               >
                 <ThumbsDown className="w-4 h-4 text-red-400" />
-                <span>👎 No mucho</span>
+                <span>👎 No</span>
               </button>
             </div>
 
-            <div className="w-full max-w-sm flex items-center gap-2">
+            <div className="w-full max-w-sm flex items-center gap-2 pt-1">
               <input
                 type="text"
                 placeholder="¿Qué mejorarías? (opcional)"
@@ -606,7 +668,7 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
               />
               <button
                 onClick={() => handleFeedbackSubmit(feedbackRating || 'helpful')}
-                className="px-3 py-2 bg-white/10 hover:bg-cyan-400 hover:text-black rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                className="min-h-[40px] px-3.5 py-2 bg-white/10 hover:bg-cyan-400 hover:text-black rounded-xl text-xs font-bold transition-colors cursor-pointer"
               >
                 Enviar
               </button>

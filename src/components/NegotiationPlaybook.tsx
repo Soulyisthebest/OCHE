@@ -43,7 +43,13 @@ export function NegotiationPlaybook({ report, countryProfile }: NegotiationPlayb
   const scriptText = `Hola, he estado valorando tu ${report.identity.make} ${report.identity.model} (${report.identity.generation || ''}). Tras estudiar el modelo y los mantenimientos preventivos que le corresponden por kilometraje y edad (revisión de líquidos, frenos y puesta a punto estimada en ~${CountryEngine.formatMoney(repMax, profile)}), mi oferta en firme para cerrar el trato de forma rápida y sin complicaciones es de ${CountryEngine.formatMoney(targetMin, profile)} a ${CountryEngine.formatMoney(targetMax, profile)}. ¿Podríamos cuadrarlo? Un saludo.`;
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(scriptText);
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(scriptText).catch(() => {});
+      }
+    } catch {
+      // Ignore clipboard permission errors in iframe
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };

@@ -61,6 +61,15 @@ export interface VehicleIdentificationResult {
   unknowns: string[];
   candidates: VehicleIdentificationCandidate[];
   matchedVehicle?: Vehicle | null;
+  status?: 'CONFIRMED' | 'NEEDS_VERIFICATION' | 'IDENTIFIED_BUT_UNSUPPORTED' | 'UNKNOWN';
+  isEngineKnown?: boolean;
+  isContradictory?: boolean;
+  conflictingDetectedVehicle?: {
+    brand: string;
+    model: string;
+    generation?: string;
+    confidence?: number;
+  };
 }
 
 export interface RiskCategoryDetail {

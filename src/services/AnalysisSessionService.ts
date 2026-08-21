@@ -24,6 +24,13 @@ export interface CreateSessionInput {
   transmission?: string;
   brandHint?: string;
   modelHint?: string;
+  generationHint?: string;
+  engineHint?: string;
+  powerHint?: number;
+  trimHint?: string;
+  vinHint?: string;
+  licensePlateHint?: string;
+  isEngineUnknown?: boolean;
 }
 
 export class AnalysisSessionService {
@@ -60,7 +67,14 @@ export class AnalysisSessionService {
           fuel: input.fuel,
           transmission: input.transmission,
           brandHint: input.brandHint,
-          modelHint: input.modelHint
+          modelHint: input.modelHint,
+          generationHint: input.generationHint,
+          engineHint: input.engineHint,
+          powerHint: input.powerHint,
+          trimHint: input.trimHint,
+          vinHint: input.vinHint,
+          licensePlateHint: input.licensePlateHint,
+          isEngineUnknown: input.isEngineUnknown
         },
         localVehicleRepository
       );
@@ -262,9 +276,13 @@ export class AnalysisSessionService {
    * Convert VehicleAnalysisSession to legacy CarAnalysisReport format for backward compatibility with existing views
    */
   static sessionToLegacyReport(session: VehicleAnalysisSession): CarAnalysisReport {
-    const defaultMake = session.identification?.brand || session.vehicle?.brand || 'Volkswagen';
-    const defaultModel = session.identification?.model || session.vehicle?.model || 'Golf';
-    const defaultGen = session.identification?.generation || session.vehicle?.generation || 'VII';
+    const defaultMake = session.identification?.brand || session.vehicle?.brand || 'Vehículo No Identificado';
+    const defaultModel = session.identification?.model || session.vehicle?.model || 'Modelo Desconocido';
+    const defaultGen = session.identification?.generation || session.vehicle?.generation || 'Pendiente de confirmación';
+
+    const isEngineUnknown = session.identification?.isEngineKnown === false ||
+      session.identification?.engine === 'Motor no especificado' ||
+      session.identification?.engine === 'UNKNOWN';
 
     const photoUrls: Partial<Record<PhotoSlotId, string>> = {};
     session.photos.forEach((p) => {
@@ -279,14 +297,18 @@ export class AnalysisSessionService {
         make: defaultMake,
         model: defaultModel,
         generation: defaultGen,
-        estimatedYearMin: session.year || session.vehicle?.yearFrom || 2012,
-        estimatedYearMax: typeof session.vehicle?.yearTo === 'number' ? session.vehicle.yearTo : 2019,
-        engine: session.identification?.engine || session.vehicle?.engine.name || '2.0 TDI CR 150 CV',
-        fuelType: (session.fuel as any) || session.vehicle?.fuel || 'Diésel',
-        powerHp: session.identification?.power || session.vehicle?.power || 150,
+        estimatedYearMin: session.year || session.vehicle?.yearFrom || 2015,
+        estimatedYearMax: typeof session.vehicle?.yearTo === 'number' ? session.vehicle.yearTo : 2024,
+        engine: isEngineUnknown
+          ? 'Motor no especificado'
+          : (session.identification?.engine || session.vehicle?.engine.name || 'Motorización pendiente de confirmación'),
+        fuelType: (session.fuel as any) || session.vehicle?.fuel || 'Gasolina',
+        powerHp: isEngineUnknown
+          ? 0
+          : (session.identification?.power || session.vehicle?.power || 100),
         transmission: (session.transmission as any) || session.vehicle?.transmission || 'Manual',
-        confidenceScore: Math.round((session.confidence || 0.85) * 100),
-        needsConfirmation: !session.askingPrice || !session.mileage
+        confidenceScore: Math.round((session.confidence ?? 0.5) * 100),
+        needsConfirmation: !session.askingPrice || !session.mileage || !session.vehicle || isEngineUnknown
       },
       mileageKm: session.mileage,
       userPrice: session.askingPrice,

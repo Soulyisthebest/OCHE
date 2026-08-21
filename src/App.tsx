@@ -13,6 +13,7 @@ import { AssistantMode } from './components/AssistantMode';
 import { LearnCars } from './components/LearnCars';
 import { CarChatAssistant } from './components/CarChatAssistant';
 import { CarComparator } from './components/CarComparator';
+import { ManualIdentificationModal, ManualVehicleData } from './components/ManualIdentificationModal';
 import { CarAnalysisReport, PhotoSlotId } from './types';
 import { VehicleAnalysisSession, AnalysisStatus, VehicleIdentificationCandidate } from './types/analysisSession';
 import { SampleDemoCar } from './data/sampleCars';
@@ -20,12 +21,15 @@ import { AnalysisSessionService } from './services/AnalysisSessionService';
 import { localVehicleRepository } from './repositories/LocalVehicleRepository';
 import { CountryEngine } from './services/CountryEngine';
 import { LocalizationService } from './services/LocalizationService';
+import { AnalyticsService } from './services/AnalyticsService';
 import { CountryProfile, CountryCode } from './types/country';
+import { AlertTriangle } from 'lucide-react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<string>('home');
   const [currentSession, setCurrentSession] = useState<VehicleAnalysisSession | null>(null);
   const [currentReport, setCurrentReport] = useState<CarAnalysisReport | null>(null);
+  const [isManualModalOpen, setIsManualModalOpen] = useState<boolean>(false);
   const [countryProfile, setCountryProfile] = useState<CountryProfile>(() => {
     return CountryEngine.autoDetectCountry();
   });
@@ -67,12 +71,23 @@ export default function App() {
     LocalizationService.setActiveLanguage(profile.language);
   };
 
+  // Start new scan flow -> initializes pilot session
+  const handleStartScanFlow = () => {
+    AnalyticsService.startPilotSession();
+    setCurrentView('scan');
+  };
+
   // Handle photo scanning completion -> proceeds to Seller Data Cards
   const handlePhotosComplete = (
     photos: Partial<Record<PhotoSlotId, { url?: string; base64?: string }>>,
     mileageKm?: number,
     askingPrice?: number
   ) => {
+    const photoCount = Object.keys(photos).length;
+    AnalyticsService.updatePilotSession({
+      identificationMethod: photoCount > 0 ? 'photo' : 'none',
+      photosProvided: photoCount
+    });
     setPendingPhotos(photos);
     setTempMileage(mileageKm);
     setTempPrice(askingPrice);
@@ -86,6 +101,15 @@ export default function App() {
     year?: number;
     fuel?: string;
     transmission?: string;
+    brandHint?: string;
+    modelHint?: string;
+    generationHint?: string;
+    engineHint?: string;
+    powerHint?: number;
+    trimHint?: string;
+    vinHint?: string;
+    licensePlateHint?: string;
+    isEngineUnknown?: boolean;
   }) => {
     setCurrentView('loading');
     setLoadingStatus('SCANNING');
@@ -100,7 +124,16 @@ export default function App() {
           mileageKm: sellerData.mileageKm,
           year: sellerData.year,
           fuel: sellerData.fuel,
-          transmission: sellerData.transmission
+          transmission: sellerData.transmission,
+          brandHint: sellerData.brandHint,
+          modelHint: sellerData.modelHint,
+          generationHint: sellerData.generationHint,
+          engineHint: sellerData.engineHint,
+          powerHint: sellerData.powerHint,
+          trimHint: sellerData.trimHint,
+          vinHint: sellerData.vinHint,
+          licensePlateHint: sellerData.licensePlateHint,
+          isEngineUnknown: sellerData.isEngineUnknown
         },
         (status, progress, message) => {
           setLoadingStatus(status);
@@ -113,8 +146,15 @@ export default function App() {
       const report = AnalysisSessionService.sessionToLegacyReport(session);
       setCurrentReport(report);
 
-      // If identification produced candidates, show confirmation card
-      if (session.identification?.candidates && session.identification.candidates.length > 0) {
+      AnalyticsService.updatePilotSession({
+        analysisCompleted: true,
+        vehicleIdentified: session.identification?.brand
+          ? `${session.identification.brand} ${session.identification.model}`
+          : null
+      });
+
+      // Always present vehicle confirmation view for verification
+      if (session.identification) {
         setCurrentView('confirm_vehicle');
       } else {
         setCurrentView('report');
@@ -125,8 +165,36 @@ export default function App() {
     }
   };
 
+  // Handle manual vehicle modal save (Test C, Test D, Test F, Test G, Phase 14.5)
+  const handleManualVehicleSave = async (manualData: ManualVehicleData) => {
+    setIsManualModalOpen(false);
+    AnalyticsService.updatePilotSession({
+      identificationMethod: Object.keys(pendingPhotos).length > 0 ? 'both' : 'manual'
+    });
+    await executeAnalysisPipeline({
+      askingPrice: manualData.askingPrice || currentSession?.askingPrice || tempPrice,
+      mileageKm: manualData.mileageKm || currentSession?.mileage || tempMileage,
+      year: manualData.year || currentSession?.year,
+      fuel: manualData.fuel,
+      transmission: manualData.transmission,
+      brandHint: manualData.brand,
+      modelHint: manualData.model,
+      generationHint: manualData.generation,
+      engineHint: manualData.isEngineUnknown ? 'Motor no especificado' : manualData.engine,
+      powerHint: manualData.power,
+      trimHint: manualData.trim,
+      vinHint: manualData.vin,
+      licensePlateHint: manualData.licensePlate,
+      isEngineUnknown: manualData.isEngineUnknown
+    });
+  };
+
   // Handle vehicle confirmation
   const handleConfirmVehicle = async (candidate: VehicleIdentificationCandidate) => {
+    AnalyticsService.updatePilotSession({
+      vehicleConfirmed: true,
+      vehicleIdentified: `${candidate.brand} ${candidate.model}`
+    });
     if (currentSession) {
       const matchedDomainVehicle = await localVehicleRepository.getDomainVehicleById(candidate.vehicleId);
       const updatedSession: VehicleAnalysisSession = {
@@ -141,7 +209,8 @@ export default function App() {
           fuel: candidate.fuel,
           power: candidate.power,
           transmission: candidate.transmission,
-          confidence: candidate.confidence
+          confidence: candidate.confidence,
+          isContradictory: false
         }
       };
       setCurrentSession(updatedSession);
@@ -193,7 +262,7 @@ export default function App() {
       <main>
         {currentView === 'home' && (
           <HeroHome
-            onStartScan={() => setCurrentView('scan')}
+            onStartScan={handleStartScanFlow}
             onNavigate={(v) => setCurrentView(v)}
             onSelectSample={handleSelectSampleCar}
             savedCount={savedReports.length}
@@ -205,6 +274,7 @@ export default function App() {
             onPhotosComplete={handlePhotosComplete}
             onCancel={() => setCurrentView('home')}
             onSelectSampleCar={handleSelectSampleCar}
+            onManualEntry={() => setIsManualModalOpen(true)}
           />
         )}
 
@@ -226,12 +296,92 @@ export default function App() {
         )}
 
         {currentView === 'confirm_vehicle' && currentSession?.identification && (
-          <VehicleConfirmCard
-            identification={currentSession.identification}
-            onConfirm={handleConfirmVehicle}
-            onManualOverride={() => setCurrentView('report')}
-          />
+          <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
+            {/* Contradiction Warning Banner (Test F) */}
+            {currentSession.identification.isContradictory && (
+              <div className="bg-amber-500/15 border-2 border-amber-500/50 rounded-3xl p-5 space-y-3 animate-fade-in shadow-xl">
+                <div className="flex items-center gap-2.5 text-amber-300 font-black text-sm uppercase tracking-wide">
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                  <span>Posible contradicción entre selección manual y análisis fotográfico</span>
+                </div>
+                <p className="text-xs text-white/90 leading-relaxed">
+                  Has seleccionado manualmente <strong>{currentSession.identification.brand} {currentSession.identification.model}</strong>, pero los rasgos visuales de las fotos aportadas corresponden con alta probabilidad a un <strong>{currentSession.identification.conflictingDetectedVehicle?.brand} {currentSession.identification.conflictingDetectedVehicle?.model}</strong>.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Keep user's explicit selection
+                      setCurrentSession({
+                        ...currentSession,
+                        identification: {
+                          ...currentSession.identification!,
+                          isContradictory: false
+                        }
+                      });
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Mantener mi selección ({currentSession.identification.brand} {currentSession.identification.model})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const detected = currentSession.identification?.conflictingDetectedVehicle;
+                      if (detected) {
+                        handleManualVehicleSave({
+                          brand: detected.brand,
+                          model: detected.model,
+                          generation: detected.generation,
+                          fuel: 'Gasolina',
+                          transmission: 'Manual'
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-wider transition-all cursor-pointer font-bold shadow-lg shadow-amber-500/20"
+                  >
+                    Revisar y cambiar a {currentSession.identification.conflictingDetectedVehicle?.brand} {currentSession.identification.conflictingDetectedVehicle?.model}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <VehicleConfirmCard
+              identification={currentSession.identification}
+              onConfirm={handleConfirmVehicle}
+              onManualOverride={() => setIsManualModalOpen(true)}
+            />
+          </div>
         )}
+
+        {/* Manual Identification Modal */}
+        <ManualIdentificationModal
+          isOpen={isManualModalOpen}
+          initialData={
+            currentSession?.identification
+              ? {
+                  brand: currentSession.identification.brand === 'Vehículo No Identificado' ? '' : currentSession.identification.brand,
+                  model: currentSession.identification.model === 'Modelo Desconocido' ? '' : currentSession.identification.model,
+                  generation: currentSession.identification.generation === 'Pendiente de confirmación' ? '' : currentSession.identification.generation,
+                  year: currentSession.identification.year,
+                  engine: currentSession.identification.engine,
+                  fuel: currentSession.identification.fuel as any,
+                  power: currentSession.identification.power,
+                  transmission: currentSession.identification.transmission as any,
+                  isEngineUnknown: currentSession.identification.isEngineKnown === false,
+                  askingPrice: currentSession.askingPrice || tempPrice,
+                  mileageKm: currentSession.mileage || tempMileage
+                }
+              : (tempPrice || tempMileage)
+              ? {
+                  askingPrice: tempPrice,
+                  mileageKm: tempMileage
+                }
+              : undefined
+          }
+          onClose={() => setIsManualModalOpen(false)}
+          onSave={handleManualVehicleSave}
+        />
 
         {currentView === 'report' && currentReport && (
           <AnalysisReport
