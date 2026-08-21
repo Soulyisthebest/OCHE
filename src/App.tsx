@@ -414,6 +414,10 @@ export default function App() {
               setCurrentReport(r);
               setCurrentView('report');
             }}
+            onLaunch3D={(r) => {
+              setCurrentReport(r);
+              setCurrentView('3d');
+            }}
           />
         )}
 

@@ -1,27 +1,27 @@
 /**
- * OCHE / CARCHECK AI — Interactive 3D Vehicle Knowledge System (FASE 7)
- * Comprehensive visual knowledge explorer connecting 3D Parts, Vehicle Knowledge,
- * Symptom Diagnostics, Inspection Guides, and dynamic Country-based Cost Engines.
+ * OCHE / CARCHECK AI — Interactive 3D Vehicle Knowledge System (FASE 7, 15, 16 & 17)
+ * UX Simplification: "TOCO -> MIRO -> ENTIENDO"
+ * Dynamic capability detection, exterior / interior / engine / internal view,
+ * clean non-technical terminology, and clear separation between 3D model and real car scan.
  */
 
 import React, { useState, useEffect } from 'react';
 import {
-  Compass,
   Layers,
-  Activity,
-  List,
-  Box,
   Wrench,
   Search,
   Sparkles,
   Info,
   Car,
+  ChevronLeft,
   ChevronDown,
-  Globe,
   Eye,
-  ShieldAlert,
+  AlertTriangle,
   FileCheck,
-  Zap
+  Zap,
+  RotateCw,
+  Compass,
+  CheckCircle2
 } from 'lucide-react';
 import {
   Car3DModel,
@@ -32,7 +32,6 @@ import {
   ObservationEvidenceItem
 } from '../types/vehicle3D';
 import { StandardSystemType } from '../types/vehicleKnowledge';
-import { Car3DAsset } from '../types/vehicle3DAsset';
 import { CarAnalysisReport } from '../types';
 import { VehicleAnalysisSession } from '../types/analysisSession';
 import { CountryEngine } from '../services/CountryEngine';
@@ -94,7 +93,7 @@ export const Car3DExplorer: React.FC<Car3DExplorerProps> = ({
     setEvidenceMap(evMap);
   }, [selectedModel, report, session]);
 
-  // Load Real GLB Asset profile
+  // Load Real Asset profile & capability flags
   useEffect(() => {
     let isCancelled = false;
     async function loadAssetProfile() {
@@ -171,35 +170,58 @@ export const Car3DExplorer: React.FC<Car3DExplorerProps> = ({
     }
   };
 
+  // Dynamic Capabilities Detection (Phase 16 & 17)
+  const hasInterior = assetLoadResult?.asset?.hasInterior ?? selectedModel.parts.some((p) => p.zoneId === 'CABIN' || p.category === 'interior');
+  const hasEngine = assetLoadResult?.asset?.hasEngine ?? selectedModel.parts.some((p) => p.systemId === 'ENGINE' || p.zoneId === 'ENGINE_BAY');
+
+  // Handle Exterior View
+  const handleViewExterior = () => {
+    setActiveCameraPreset('FULL_CAR');
+    setIsExplodedView(false);
+    setViewMode('3D');
+    showToast('Mostrando vista exterior completa 360º.', 'info');
+  };
+
   // Handle Inspect Engine button
   const handleInspectEngine = () => {
-    const hasEngine = assetLoadResult?.asset?.hasEngine ?? true;
     if (hasEngine) {
       setActiveCameraPreset('ENGINE');
+      setIsExplodedView(false);
+      setViewMode('3D');
       const enginePart = selectedModel.parts.find((p) => p.systemId === 'ENGINE');
       if (enginePart) setSelectedPart(enginePart);
-      showToast('Enfocando conjunto propulsor y motor.', 'info');
+      showToast('Enfocando conjunto del motor.', 'info');
     } else {
-      showToast('Motor 3D específico no disponible.', 'warning');
+      showToast('Motor 3D específico no disponible para este modelo.', 'warning');
     }
   };
 
   // Handle View Interior button
   const handleViewInterior = () => {
-    const hasInterior = assetLoadResult?.asset?.hasInterior ?? false;
     if (hasInterior) {
       setActiveCameraPreset('CABIN');
-      showToast('Accediendo a vista de habitáculo interior.', 'info');
+      setIsExplodedView(false);
+      setViewMode('3D');
+      const cabinPart = selectedModel.parts.find((p) => p.zoneId === 'CABIN' || p.category === 'interior');
+      if (cabinPart) setSelectedPart(cabinPart);
+      showToast('Mostrando vista del habitáculo interior.', 'info');
     } else {
-      showToast('Interior 3D específico no disponible.', 'warning');
+      showToast('Interior 3D no disponible para este modelo.', 'warning');
     }
+  };
+
+  // Handle Explode / Internal View Toggle
+  const handleToggleInternalView = () => {
+    setIsExplodedView(!isExplodedView);
+    setViewMode('3D');
+    showToast(!isExplodedView ? 'Mostrando piezas internas del coche.' : 'Vista normal restaurada.', 'info');
   };
 
   const showToast = (message: string, type: 'info' | 'warning') => {
     setInteractionToast({ message, type });
     setTimeout(() => {
       setInteractionToast(null);
-    }, 4000);
+    }, 3500);
   };
 
   // Handle Ask OCHE button
@@ -216,133 +238,14 @@ export const Car3DExplorer: React.FC<Car3DExplorerProps> = ({
   const isVehicleWithoutSpecific3D = report?.identity?.make && !Vehicle3DService.has3DModelForVehicle(report.identity);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#0A0A0D] text-white p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
-      {/* Top Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-xs font-black text-blue-400 uppercase tracking-widest mb-2 border border-blue-500/30">
-            <Compass className="w-4 h-4" />
-            <span>INTERACTIVE 3D VEHICLE KNOWLEDGE SYSTEM</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tighter uppercase italic">
-            Explorador Técnico OCHE
-          </h1>
-          <p className="text-xs text-white/50 font-bold uppercase tracking-wider mt-0.5">
-            Explora la anatomía mecánica, diagnósticos y costes reales pieza por pieza
-          </p>
-        </div>
-
-        {/* Global Action Controls: Symptom Search + Model Selector + 2D/3D Mode + Asset Specs */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Symptom Explorer Button */}
-          <button
-            onClick={() => setIsSymptomModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
-            id="btn-symptom-explorer"
-          >
-            <Activity className="w-4 h-4 text-amber-400" />
-            <span>Buscador de Síntomas</span>
-          </button>
-
-          {/* Inspect Engine Action */}
-          <button
-            onClick={handleInspectEngine}
-            className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
-            id="btn-inspect-engine"
-            title="Inspeccionar vano motor"
-          >
-            <Wrench className="w-4 h-4 text-emerald-400" />
-            <span>Motor</span>
-          </button>
-
-          {/* View Interior Action */}
-          <button
-            onClick={handleViewInterior}
-            className="px-3.5 py-2.5 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
-            id="btn-view-interior"
-            title="Ver habitáculo interior"
-          >
-            <Eye className="w-4 h-4 text-cyan-400" />
-            <span>Interior</span>
-          </button>
-
-          {/* Exploded View Toggle */}
-          <button
-            onClick={() => setIsExplodedView((prev) => !prev)}
-            className={`px-3.5 py-2.5 rounded-2xl border text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
-              isExplodedView
-                ? 'bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-500/20'
-                : 'bg-black/60 text-white/60 border-white/10 hover:text-white hover:bg-white/10'
-            }`}
-            id="btn-exploded-view"
-            title="Separar componentes mecánicos en capas"
-          >
-            <Layers className="w-4 h-4" />
-            <span>Despiece</span>
-          </button>
-
-          {/* 3D vs 2D List Mode Toggle (Accessibility requirement) */}
-          <div className="flex items-center p-1 bg-black/60 border border-white/10 rounded-2xl">
-            <button
-              onClick={() => setViewMode('3D')}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-black uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === '3D' ? 'bg-blue-600 text-white shadow-md' : 'text-white/50 hover:text-white'
-              }`}
-              title="Vista 3D Interactiva"
-              id="btn-view-mode-3d"
-            >
-              <Box className="w-4 h-4" />
-              <span className="hidden sm:inline">3D</span>
-            </button>
-            <button
-              onClick={() => setViewMode('2D_LIST')}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-black uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === '2D_LIST' ? 'bg-blue-600 text-white shadow-md' : 'text-white/50 hover:text-white'
-              }`}
-              title="Ver información sin 3D (Accesible)"
-              id="btn-view-mode-2d"
-            >
-              <List className="w-4 h-4" />
-              <span className="hidden sm:inline">Sin 3D</span>
-            </button>
-          </div>
-
-          {/* Asset Info Button */}
-          <button
-            onClick={() => setIsAssetInfoModalOpen(true)}
-            className="px-3 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 text-xs font-black uppercase flex items-center gap-1 transition-all cursor-pointer"
-            id="btn-asset-specs"
-            title="Especificaciones técnicas y licencia del modelo 3D"
-          >
-            <Info className="w-4 h-4 text-blue-400" />
-            <span className="hidden xl:inline">Pipeline 3D</span>
-          </button>
-
-          {/* Model Selector Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedModel?.id || ''}
-              onChange={(e) => handleModelChange(e.target.value)}
-              className="appearance-none bg-black/80 text-white text-xs font-black uppercase tracking-wider py-2.5 pl-3 pr-8 rounded-2xl border border-white/15 focus:outline-none focus:border-blue-500 cursor-pointer"
-            >
-              {(allModels || []).map((m) => (
-                <option key={m.id} value={m.id} className="bg-[#16161D] text-white">
-                  {m.make} {m.model} ({m.engine})
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-white/40 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-        </div>
-      </div>
-
-      {/* Interaction Toast */}
+    <div className="min-h-[calc(100vh-4rem)] bg-[#0A0A0D] text-white p-4 sm:p-6 max-w-7xl mx-auto space-y-5">
+      {/* Toast Notification */}
       {interactionToast && (
         <div
-          className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 shadow-xl transition-all ${
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-2 animate-slide-up backdrop-blur-md ${
             interactionToast.type === 'warning'
-              ? 'bg-amber-950/90 text-amber-200 border border-amber-500/50'
-              : 'bg-blue-950/90 text-blue-200 border border-blue-500/50'
+              ? 'bg-amber-950/90 border-amber-500 text-amber-200'
+              : 'bg-cyan-950/90 border-cyan-500 text-cyan-200'
           }`}
         >
           <Info className="w-4 h-4 flex-shrink-0" />
@@ -350,102 +253,168 @@ export const Car3DExplorer: React.FC<Car3DExplorerProps> = ({
         </div>
       )}
 
-      {/* Fallback Banner if vehicle has no specific 3D model */}
-      {isVehicleWithoutSpecific3D && (
-        <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-lg">
-          <div className="flex items-center gap-2.5">
-            <span className="text-amber-400 font-black text-sm">ℹ️</span>
-            <div>
-              <span className="text-white font-bold block">
-                Modelo 3D específico no disponible para este vehículo ({report?.identity.make} {report?.identity.model}).
-              </span>
-              <span className="text-white/60 text-[11px] block">
-                Puedes explorar la arquitectura general de referencia o consultar el informe fotográfico.
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+      {/* Top Header Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          {onNavigateToReport && (
             <button
-              onClick={() => handleModelChange('model-3d-generic-car')}
-              className="px-3 py-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 text-blue-300 hover:text-white text-[11px] font-black uppercase whitespace-nowrap transition-colors cursor-pointer"
-              id="btn-explore-universal"
+              onClick={onNavigateToReport}
+              className="text-xs font-black uppercase tracking-wider text-white/70 hover:text-white flex items-center gap-1.5 bg-[#16161D] px-4 py-2 rounded-full border border-white/10 mb-3 cursor-pointer"
+              id="btn-back-to-report"
             >
-              Explorar arquitectura general
+              <ChevronLeft className="w-4 h-4" />
+              Volver al informe
             </button>
-            {onNavigateToReport && (
-              <button
-                onClick={onNavigateToReport}
-                className="px-3 py-1.5 rounded-xl bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 text-amber-300 hover:text-white text-[11px] font-black uppercase whitespace-nowrap transition-colors cursor-pointer"
-                id="btn-back-to-report"
-              >
-                Volver al informe
-              </button>
-            )}
+          )}
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 text-xs font-black text-cyan-400 uppercase tracking-widest mb-1">
+            <Eye className="w-4 h-4" />
+            <span>EXPLORADOR DEL COCHE</span>
           </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black text-white uppercase italic tracking-tighter">
+            {vehicleDisplayName}
+          </h1>
+          <p className="text-xs text-white/50 font-bold uppercase tracking-wider mt-0.5">
+            Exploración interactiva de componentes mecánicos y puntos clave
+          </p>
+        </div>
+
+        {/* Model Selector Pill */}
+        <div className="flex items-center gap-2 bg-[#16161D] p-1.5 rounded-2xl border border-white/10">
+          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">
+            Modelo:
+          </label>
+          <select
+            value={selectedModel.id}
+            onChange={(e) => handleModelChange(e.target.value)}
+            className="bg-black/60 border border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+            id="select-vehicle-3d-model"
+          >
+            {allModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.make} {m.model} ({m.engine})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Distinction & Context Banner: 3D Model vs Real Car Scan (Phase 17 User Spec) */}
+      <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 flex items-start gap-3 text-xs">
+        <Info className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+        <div className="space-y-0.5">
+          <p className="text-white/90 font-bold">
+            <span className="text-cyan-400 uppercase">Modelo 3D de referencia:</span> Muestra la arquitectura del vehículo y qué conviene revisar.
+          </p>
+          <p className="text-white/50 text-[11px]">
+            El estado real de tu unidad concreta proviene de las fotografías y el informe de escaneo. En este modelo conviene revisar estos puntos de forma preventiva.
+          </p>
+        </div>
+      </div>
+
+      {/* Fallback Banner for Vehicles Without Specific 3D Model */}
+      {isVehicleWithoutSpecific3D && (
+        <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+          <div className="space-y-1">
+            <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4" />
+              <span>VISTA 3D ESPECÍFICA EN DESARROLLO</span>
+            </span>
+            <p className="text-xs text-white/90 font-bold">
+              Mostrando la arquitectura general para {report?.identity?.make} {report?.identity?.model}.
+            </p>
+            <p className="text-[11px] text-white/60">
+              Esta vista es orientativa y te permite comprender el funcionamiento de cada sistema mecánico.
+            </p>
+          </div>
+          <button
+            onClick={() => handleModelChange('model-3d-generic-car')}
+            className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-black uppercase tracking-wider flex-shrink-0 transition-colors cursor-pointer"
+          >
+            🔧 Ver cómo funciona el coche
+          </button>
         </div>
       )}
 
-      {/* Non-Diagnostic Architectural Disclaimer */}
-      <div className="px-3.5 py-2 rounded-xl bg-blue-950/20 border border-blue-500/20 flex flex-wrap items-center justify-between gap-2 text-[11px] text-blue-300/80">
-        <div className="flex items-center gap-2">
-          <Info className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-          <span>
-            <strong>Aviso de Arquitectura 3D:</strong> El modelo 3D representa la arquitectura de referencia del modelo. El estado real del vehículo proviene exclusivamente de las fotografías y la inspección física.
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded bg-amber-500/10 text-[10px] font-mono text-amber-400 border border-amber-500/20">
-            {assetLoadResult?.state || 'WAITING_FOR_REAL_GLB_ASSET'}
-          </span>
-          <span className="hidden md:inline-block px-2 py-0.5 rounded bg-blue-500/10 text-[10px] font-mono text-blue-400 border border-blue-500/20">
-            GLB / DRACO
-          </span>
-        </div>
-      </div>
+      {/* Main View Buttons: [ 🚗 EXTERIOR ], [ 🪑 INTERIOR ], [ 🔧 MOTOR ], [ 💥 VER POR DENTRO ], [ 🧩 LISTA DE PIEZAS ] */}
+      <div className="flex flex-wrap items-center gap-2 p-2 rounded-2xl bg-[#14141A] border border-white/10">
+        {/* 1. Exterior (Always available) */}
+        <button
+          onClick={handleViewExterior}
+          className={`min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            activeCameraPreset === 'FULL_CAR' && !isExplodedView && viewMode === '3D'
+              ? 'bg-cyan-500 text-black shadow-lg font-black'
+              : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
+          }`}
+          id="btn-view-exterior"
+        >
+          <Car className="w-4 h-4" />
+          <span>🚗 Exterior</span>
+        </button>
 
-      {/* System Filters Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest mr-1 flex-shrink-0">
-          Sistemas:
-        </span>
-        {(['ALL', 'ENGINE', 'COOLING', 'TRANSMISSION', 'BRAKES', 'SUSPENSION', 'EXHAUST', 'ELECTRICAL'] as const).map(
-          (sys) => {
-            const isActive = activeSystemFilter === sys;
-            return (
-              <button
-                key={sys}
-                onClick={() => setActiveSystemFilter(sys)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border whitespace-nowrap cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white border-blue-400 shadow-md'
-                    : 'bg-black/60 text-white/60 border-white/10 hover:text-white hover:bg-white/10'
-                }`}
-                id={`filter-sys-${sys}`}
-              >
-                {sys === 'ALL'
-                  ? 'Todos'
-                  : sys === 'ENGINE'
-                  ? 'Motor'
-                  : sys === 'COOLING'
-                  ? 'Refrigeración'
-                  : sys === 'TRANSMISSION'
-                  ? 'Transmisión'
-                  : sys === 'BRAKES'
-                  ? 'Frenos'
-                  : sys === 'SUSPENSION'
-                  ? 'Suspensión'
-                  : sys === 'EXHAUST'
-                  ? 'Escape/FAP'
-                  : 'Eléctrico'}
-              </button>
-            );
-          }
+        {/* 2. Interior (Shown ONLY if hasInterior is true) */}
+        {hasInterior && (
+          <button
+            onClick={handleViewInterior}
+            className={`min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+              activeCameraPreset === 'CABIN' && !isExplodedView && viewMode === '3D'
+                ? 'bg-cyan-500 text-black shadow-lg font-black'
+                : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
+            }`}
+            id="btn-view-interior"
+          >
+            <span>🪑 Interior</span>
+          </button>
         )}
+
+        {/* 3. Motor (Shown ONLY if hasEngine is true) */}
+        {hasEngine && (
+          <button
+            onClick={handleInspectEngine}
+            className={`min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+              activeCameraPreset === 'ENGINE' && !isExplodedView && viewMode === '3D'
+                ? 'bg-cyan-500 text-black shadow-lg font-black'
+                : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
+            }`}
+            id="btn-view-engine"
+          >
+            <Wrench className="w-4 h-4" />
+            <span>🔧 Motor</span>
+          </button>
+        )}
+
+        {/* 4. Ver por dentro (Internal / Exploded Layer toggle) */}
+        <button
+          onClick={handleToggleInternalView}
+          className={`min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            isExplodedView
+              ? 'bg-purple-500 text-white shadow-lg font-black border border-purple-400'
+              : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
+          }`}
+          id="btn-view-internal"
+        >
+          <Layers className="w-4 h-4" />
+          <span>💥 {isExplodedView ? 'Ocultar interior' : 'Ver por dentro'}</span>
+        </button>
+
+        {/* 5. Lista de piezas / Vista 2D Accesible */}
+        <button
+          onClick={() => setViewMode(viewMode === '3D' ? '2D_LIST' : '3D')}
+          className={`min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ml-auto ${
+            viewMode === '2D_LIST'
+              ? 'bg-blue-600 text-white shadow-lg font-black'
+              : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
+          }`}
+          id="btn-toggle-view-mode"
+        >
+          <span>🧩 {viewMode === '2D_LIST' ? 'Volver a vista 3D' : 'Lista de piezas (Sin 3D)'}</span>
+        </button>
       </div>
 
-      {/* Main Grid: 3D Stage / 2D List (Left 7 cols) & Deep Part Knowledge Drawer (Right 5 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (7 cols) */}
+      {/* Main Workspace (Grid: Left Canvas 7 cols, Right Detail Drawer 5 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Interactive 3D Canvas or Accessible Parts List */}
         <div className="lg:col-span-7 space-y-4">
           {viewMode === '3D' ? (
             <Car3DCanvas
@@ -490,9 +459,9 @@ export const Car3DExplorer: React.FC<Car3DExplorerProps> = ({
                     const firstPartInZone = (selectedModel?.parts || []).find((p) => p.zoneId === zone.id);
                     if (firstPartInZone) setSelectedPart(firstPartInZone);
                   }}
-                  className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all border cursor-pointer ${
+                  className={`min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border cursor-pointer ${
                     isZoneSelected
-                      ? 'bg-white/20 text-white border-white/40'
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
                       : 'bg-white/5 text-white/50 border-white/10 hover:text-white'
                   }`}
                   id={`zone-btn-${zone.id}`}
@@ -504,7 +473,7 @@ export const Car3DExplorer: React.FC<Car3DExplorerProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Deep Part Knowledge Card & Actions (5 cols) */}
+        {/* Right Column: Part Detail Card & Actions (5 cols) */}
         <div className="lg:col-span-5">
           <PartDetailDrawer
             card={card}
@@ -516,75 +485,6 @@ export const Car3DExplorer: React.FC<Car3DExplorerProps> = ({
           />
         </div>
       </div>
-
-      {/* Technical Asset Specifications Modal (Phase 16) */}
-      {isAssetInfoModalOpen && assetLoadResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="bg-[#121218] border border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-blue-400" />
-                <h3 className="text-base font-black uppercase tracking-wide">Ficha Técnica de Asset 3D</h3>
-              </div>
-              <button
-                onClick={() => setIsAssetInfoModalOpen(false)}
-                className="text-white/50 hover:text-white text-sm font-bold px-2 py-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-2xl bg-black/40 border border-white/10 flex justify-between">
-                <span className="text-white/50">Estado de Asset:</span>
-                <span className="font-mono font-bold text-amber-400">{assetLoadResult.state}</span>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-black/40 border border-white/10 flex justify-between">
-                <span className="text-white/50">Formato / Compresión:</span>
-                <span className="font-mono font-bold text-white">GLB / DRACO Meshopt</span>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-black/40 border border-white/10 flex justify-between">
-                <span className="text-white/50">Conteo de Polígonos:</span>
-                <span className="font-mono font-bold text-white">
-                  {assetLoadResult.diagnostics.polygonCount.toLocaleString()} triángulos
-                </span>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-black/40 border border-white/10 flex justify-between">
-                <span className="text-white/50">Tamaño Estimado:</span>
-                <span className="font-mono font-bold text-white">
-                  {(assetLoadResult.diagnostics.fileSizeEstimateBytes / (1024 * 1024)).toFixed(2)} MB
-                </span>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-black/40 border border-white/10 flex justify-between">
-                <span className="text-white/50">Resolución de Texturas:</span>
-                <span className="font-mono font-bold text-white">{assetLoadResult.diagnostics.textureResolution}</span>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-blue-950/30 border border-blue-500/30 space-y-1">
-                <span className="text-blue-300 font-bold block">Licencia & Derechos:</span>
-                <p className="text-[11px] text-white/70">{assetLoadResult.messages.licenseNotice}</p>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-black/40 border border-white/10 space-y-1">
-                <span className="text-white/50 font-bold block">Componentes Detectados:</span>
-                <p className="text-[11px] text-white/80">• {assetLoadResult.messages.engineStatus}</p>
-                <p className="text-[11px] text-white/80">• {assetLoadResult.messages.interiorStatus}</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsAssetInfoModalOpen(false)}
-              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-xs tracking-wider transition-colors cursor-pointer"
-            >
-              Cerrar Ficha Técnica
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Symptom Explorer Modal */}
       <SymptomExplorerModal

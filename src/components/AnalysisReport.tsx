@@ -305,10 +305,11 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
 
             <button
               onClick={onLaunch3D}
-              className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 flex items-center gap-1.5 transition-all cursor-pointer ml-auto"
+              className="min-h-[44px] px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-cyan-400 hover:bg-cyan-300 text-black shadow-lg hover:shadow-cyan-400/20 flex items-center gap-2 transition-all cursor-pointer ml-auto active:scale-95"
+              id="btn-report-view-3d"
             >
-              <Compass className="w-4 h-4" />
-              <span>Ver en 3D</span>
+              <Eye className="w-4 h-4" />
+              <span>👀 VER EL COCHE</span>
             </button>
           </div>
         </div>
@@ -516,6 +517,32 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
 
       {/* EVIDENCE MATRIX */}
       <EvidenceSection report={report} />
+
+      {/* ============================================================ */}
+      {/* 👀 EXPLORACIÓN 3D INTERACTIVA DEL COCHE — FASE 17 */}
+      {/* ============================================================ */}
+      <div className="bg-gradient-to-r from-cyan-950/40 via-blue-950/40 to-indigo-950/40 border-2 border-cyan-500/30 rounded-[28px] p-6 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1.5 max-w-xl">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>EXPLORACIÓN INTERACTIVA DEL MODELO</span>
+          </span>
+          <h3 className="text-xl font-black text-white uppercase italic tracking-tight">
+            👀 Ver y explorar este {report.identity.make} {report.identity.model}
+          </h3>
+          <p className="text-xs text-white/70 font-medium leading-relaxed">
+            Gira 360º, explora el motor y toca cada pieza para saber qué hace, qué conviene comprobar y el coste estimado de reparación.
+          </p>
+        </div>
+        <button
+          onClick={onLaunch3D}
+          className="min-h-[48px] px-6 py-3 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-black font-black text-xs uppercase tracking-wider shadow-xl flex items-center gap-2 transition-all active:scale-95 flex-shrink-0 cursor-pointer"
+          id="btn-callout-view-3d"
+        >
+          <Eye className="w-4 h-4" />
+          <span>VER EL COCHE</span>
+        </button>
+      </div>
 
       {/* ============================================================ */}
       {/* 💬 QUÉ PREGUNTAR AL VENDEDOR */}

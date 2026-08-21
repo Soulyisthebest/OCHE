@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Scale, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Car, ChevronLeft, Sparkles, Trophy } from 'lucide-react';
+import { Scale, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Car, ChevronLeft, Sparkles, Trophy, Eye } from 'lucide-react';
 import { CarAnalysisReport } from '../types';
 import { SAMPLE_DEMO_CARS } from '../data/sampleCars';
 
@@ -7,9 +7,15 @@ interface CarComparatorProps {
   savedReports?: CarAnalysisReport[];
   onBack: () => void;
   onSelectReport?: (report: CarAnalysisReport) => void;
+  onLaunch3D?: (report: CarAnalysisReport) => void;
 }
 
-export const CarComparator: React.FC<CarComparatorProps> = ({ savedReports = [], onBack, onSelectReport }) => {
+export const CarComparator: React.FC<CarComparatorProps> = ({
+  savedReports = [],
+  onBack,
+  onSelectReport,
+  onLaunch3D
+}) => {
   // Combine demo car reports and saved reports
   const allAvailableReports: { id: string; name: string; report: CarAnalysisReport; tag: string }[] = [
     ...SAMPLE_DEMO_CARS.map((c) => ({
@@ -228,14 +234,25 @@ export const CarComparator: React.FC<CarComparatorProps> = ({ savedReports = [],
             </div>
           </div>
 
-          {onSelectReport && (
-            <button
-              onClick={() => onSelectReport(carA)}
-              className="w-full py-3 rounded-2xl bg-white hover:bg-blue-50 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
-            >
-              Ver Informe Completo Coche A
-            </button>
-          )}
+          <div className="space-y-2 pt-2">
+            {onSelectReport && (
+              <button
+                onClick={() => onSelectReport(carA)}
+                className="w-full py-3 rounded-2xl bg-white hover:bg-blue-50 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md"
+              >
+                Ver Informe Completo
+              </button>
+            )}
+            {onLaunch3D && (
+              <button
+                onClick={() => onLaunch3D(carA)}
+                className="w-full py-2.5 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Eye className="w-4 h-4 text-blue-400" />
+                <span>👀 VER EL COCHE</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* CAR B CARD */}
@@ -297,14 +314,25 @@ export const CarComparator: React.FC<CarComparatorProps> = ({ savedReports = [],
             </div>
           </div>
 
-          {onSelectReport && (
-            <button
-              onClick={() => onSelectReport(carB)}
-              className="w-full py-3 rounded-2xl bg-white hover:bg-purple-50 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
-            >
-              Ver Informe Completo Coche B
-            </button>
-          )}
+          <div className="space-y-2 pt-2">
+            {onSelectReport && (
+              <button
+                onClick={() => onSelectReport(carB)}
+                className="w-full py-3 rounded-2xl bg-white hover:bg-purple-50 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md"
+              >
+                Ver Informe Completo
+              </button>
+            )}
+            {onLaunch3D && (
+              <button
+                onClick={() => onLaunch3D(carB)}
+                className="w-full py-2.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Eye className="w-4 h-4 text-purple-400" />
+                <span>👀 VER EL COCHE</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

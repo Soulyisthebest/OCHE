@@ -45,11 +45,11 @@ export const AccessibilityPartsList: React.FC<AccessibilityPartsListProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-black text-white uppercase tracking-tight flex items-center gap-2">
-            <Wrench className="w-4 h-4 text-blue-400" />
-            <span>Índice Estructurado de Componentes ({filteredParts.length})</span>
+            <Wrench className="w-4 h-4 text-cyan-400" />
+            <span>Lista de Componentes ({filteredParts.length})</span>
           </h3>
           <p className="text-xs text-white/50 font-bold">
-            Exploración accesible por lista y subsistema
+            Exploración accesible sin vista 3D
           </p>
         </div>
 

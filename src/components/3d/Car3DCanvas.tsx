@@ -184,7 +184,7 @@ export const Car3DCanvas: React.FC<Car3DCanvasProps> = ({
           {isExplodedView && (
             <span className="px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/40 text-[10px] font-black uppercase tracking-wider text-purple-300 backdrop-blur-md flex items-center gap-1.5 animate-fade-in shadow-lg">
               <Layers className="w-3 h-3" />
-              <span>VISTA DESPIECE / EXPLOSION</span>
+              <span>💥 VISTA POR DENTRO</span>
             </span>
           )}
         </div>
