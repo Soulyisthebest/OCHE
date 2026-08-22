@@ -224,44 +224,29 @@ Precio solicitado: ${askingPrice ? `${askingPrice} ${curr}` : 'No especificado'}
         }
       };
 
-      // Resilient fallback across supported models with backoff on 503 / 429 / UNAVAILABLE
-      const candidateModels = ['gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+      // Resilient fallback across valid supported models (gemini-3.7-flash, gemini-3.1-flash-lite, gemini-flash-latest)
+      const candidateModels = ['gemini-3.7-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
       let response: any = null;
       let lastGeminiError: any = null;
 
       for (const modelName of candidateModels) {
-        for (let attempt = 1; attempt <= 2; attempt++) {
-          try {
-            console.log(`[SERVER_DIAGNOSTIC] Calling model ${modelName} (attempt ${attempt})...`);
-            const res = await ai.models.generateContent({
-              ...requestConfig,
-              model: modelName
-            });
-            if (res?.text) {
-              response = res;
-              break;
-            }
-          } catch (err: any) {
-            lastGeminiError = err;
-            const errMsg = err?.message || String(err);
-            console.warn(`[SERVER_DIAGNOSTIC] ${modelName} attempt ${attempt} transient issue:`, errMsg);
-            const isSpikeOrTransient =
-              err?.status === 503 ||
-              err?.status === 429 ||
-              err?.code === 503 ||
-              err?.code === 429 ||
-              errMsg.includes('503') ||
-              errMsg.includes('429') ||
-              errMsg.includes('high demand') ||
-              errMsg.includes('UNAVAILABLE') ||
-              errMsg.includes('resource exhausted');
-
-            if (isSpikeOrTransient && attempt === 1) {
-              await new Promise((resolve) => setTimeout(resolve, 600));
-            } else {
-              break; // Proceed to next candidate model
-            }
+        try {
+          console.log(`[SERVER_DIAGNOSTIC] Calling model ${modelName}...`);
+          const res = await ai.models.generateContent({
+            ...requestConfig,
+            model: modelName
+          });
+          if (res?.text) {
+            response = res;
+            console.log(`[SERVER_DIAGNOSTIC] Successfully received output from ${modelName}`);
+            break;
           }
+        } catch (err: any) {
+          lastGeminiError = err;
+          const errMsg = err?.message || String(err);
+          console.warn(`[SERVER_DIAGNOSTIC] Model ${modelName} transient issue: ${errMsg.slice(0, 150)}. Trying next candidate...`);
+          // Brief pause before trying fallback candidate model
+          await new Promise((resolve) => setTimeout(resolve, 400));
         }
         if (response) break;
       }
@@ -360,6 +345,64 @@ Precio solicitado: ${askingPrice ? `${askingPrice} ${curr}` : 'No especificado'}
     } catch (err: any) {
       console.error('Error in /api/analyze-car:', err);
       return res.status(500).json({ error: err?.message || 'Failed to analyze car' });
+    }
+  });
+
+  // API route for Real-time Mechanic Chat Assistant
+  app.post('/api/chat-mechanic', async (req, res) => {
+    try {
+      const { message, carContext } = req.body;
+
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'Message is required' });
+      }
+
+      if (!process.env.GEMINI_API_KEY) {
+        return res.json({
+          reply: 'En general, para coches de segunda mano es vital revisar el libro de mantenimiento, estado de neumáticos, embrague y realizar una prueba en carretera en frío.'
+        });
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+      });
+
+      const prompt = `Eres el mecánico de cabecera y asesor experto en compra de coches de segunda mano para la app OCHE / CARCHECK AI.
+Responde de forma clara, directa, pragmática y sin tecnicismos innecesarios en ESPAÑOL.
+Sé conciso (máximo 3-4 frases o lista corta de puntos clave).
+
+Contexto del vehículo del usuario: ${carContext || 'Vehículo de segunda mano general'}
+Pregunta del usuario: ${message}`;
+
+      let reply = '';
+      const candidateModels = ['gemini-3.7-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+
+      for (const model of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: prompt
+          });
+          if (response?.text) {
+            reply = response.text.trim();
+            break;
+          }
+        } catch {
+          // Try next model
+        }
+      }
+
+      if (!reply) {
+        reply = 'Es importante verificar el historial de revisiones, comprobar que no haya fugas en el vano motor y probar el embrague en una marcha larga (3ª o 4ª) para descartar patinamiento.';
+      }
+
+      return res.json({ reply });
+    } catch (err: any) {
+      console.error('Error in /api/chat-mechanic:', err);
+      return res.json({
+        reply: 'Revisa siempre en persona el estado de la batería, pastillas de freno y realiza una diagnosis electrónica OBD2 si es posible antes de cerrar el trato.'
+      });
     }
   });
 

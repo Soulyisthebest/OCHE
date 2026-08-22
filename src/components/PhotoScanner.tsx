@@ -1,87 +1,97 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, CheckCircle2, ChevronRight, ChevronLeft, RotateCcw, AlertCircle, Sparkles, X, Plus, Zap, Check } from 'lucide-react';
+import {
+  Camera, Upload, CheckCircle2, ChevronRight, ChevronLeft,
+  RotateCcw, Sparkles, X, Plus, Zap, Check, Eye, AlertCircle
+} from 'lucide-react';
 import { PhotoSlotId, PhotoSlot } from '../types';
 import { SAMPLE_DEMO_CARS, SampleDemoCar } from '../data/sampleCars';
 import { compressImage } from '../utils/imageCompressor';
 import { AnalyticsService } from '../services/AnalyticsService';
 
-const QUICK_PHOTO_SLOTS: PhotoSlot[] = [
-  {
-    id: 'front',
-    label: '1. FRONTAL',
-    guide: 'Fotografía el frontal completo del vehículo.',
-    iconName: 'Car',
-    required: true
-  },
-  {
-    id: 'left',
-    label: '2. LATERAL',
-    guide: 'Ahora fotografía el lateral para ver la línea y carrocería.',
-    iconName: 'Car'
-  },
-  {
-    id: 'interior',
-    label: '3. INTERIOR',
-    guide: 'Ahora el interior: volante, asientos y consola central.',
-    iconName: 'Car'
-  },
-  {
-    id: 'dashboard',
-    label: '4. CUADRO DE INSTRUMENTOS',
-    guide: 'Ahora el cuadro con contacto/motor en marcha para revisar testigos.',
-    iconName: 'Gauge'
-  }
-];
+interface InspectionMissionStep {
+  id: PhotoSlotId;
+  label: string;
+  stepName: string;
+  challengeTitle: string;
+  instruction: string;
+  frameGuide: string;
+  iconEmoji: string;
+  required?: boolean;
+}
 
-const FULL_PHOTO_SLOTS: PhotoSlot[] = [
+const MISSION_STEPS: InspectionMissionStep[] = [
   {
     id: 'front',
-    label: '1. FRONTAL',
-    guide: 'Fotografía el frontal completo del vehículo.',
-    iconName: 'Car',
+    label: 'Frontal',
+    stepName: 'Misión 1: Frontal completo',
+    challengeTitle: 'FRENTE Y MATRÍCULA',
+    instruction: 'Encuadra el morro completo con los faros y la matrícula dentro del marco.',
+    frameGuide: 'Encuadra el frontal completo',
+    iconEmoji: '🚗',
     required: true
   },
   {
-    id: 'back',
-    label: '2. TRASERA',
-    guide: 'Ahora fotografía la zaga completa: pilotos, paragolpes y escape.',
-    iconName: 'Car'
-  },
-  {
-    id: 'left',
-    label: '3. LATERAL IZQUIERDO',
-    guide: 'Ahora el lateral izquierdo completo para comprobar pintura y paneles.',
-    iconName: 'Car'
-  },
-  {
-    id: 'right',
-    label: '4. LATERAL DERECHO',
-    guide: 'Ahora el lateral derecho desde el paso de rueda delantero al trasero.',
-    iconName: 'Car'
-  },
-  {
-    id: 'interior',
-    label: '5. INTERIOR',
-    guide: 'Ahora el puesto de conducción: volante, pedales y pomo del cambio.',
-    iconName: 'Car'
-  },
-  {
     id: 'dashboard',
-    label: '6. CUADRO DE INSTRUMENTOS',
-    guide: 'Ahora el cuadro de mandos con el motor en marcha para ver testigos de avería.',
-    iconName: 'Gauge'
-  },
-  {
-    id: 'engine',
-    label: '7. MOTOR',
-    guide: 'Abre el capó y haz una foto limpia del vano motor.',
-    iconName: 'Cpu'
+    label: 'Cuadro',
+    stepName: 'Misión 2: Cuadro de mandos',
+    challengeTitle: 'TESTIGOS Y KILÓMETROS',
+    instruction: 'Haz la foto al cuadro con el contacto puesto para leer los km y testigos.',
+    frameGuide: 'Encuadra el velocímetro y pantalla',
+    iconEmoji: '⏱️'
   },
   {
     id: 'tires',
-    label: '8. NEUMÁTICOS',
-    guide: 'Enfoca de cerca el dibujo y flancos de los neumáticos delanteros.',
-    iconName: 'CircleDot'
+    label: 'Neumáticos',
+    stepName: 'Misión 3: Neumático delantero',
+    challengeTitle: 'DESGASTE Y DIBUJO',
+    instruction: 'Acércate a la rueda delantera para comprobar la profundidad del dibujo y flancos.',
+    frameGuide: 'Encuadra el dibujo de la rueda',
+    iconEmoji: '🛞'
+  },
+  {
+    id: 'engine',
+    label: 'Motor',
+    stepName: 'Misión 4: Vano motor',
+    challengeTitle: 'MOTOR Y FUGAS',
+    instruction: 'Abre el capó y haz una foto general para detectar fugas o cables sueltos.',
+    frameGuide: 'Encuadra el vano motor abierto',
+    iconEmoji: '🔧'
+  },
+  {
+    id: 'interior',
+    label: 'Interior',
+    stepName: 'Misión 5: Puesto de mando',
+    challengeTitle: 'VOLANTE Y PEDALES',
+    instruction: 'Fotografía el volante, asiento del conductor y pomo del cambio.',
+    frameGuide: 'Encuadra volante y asiento',
+    iconEmoji: '🪑'
+  },
+  {
+    id: 'left',
+    label: 'Lateral',
+    stepName: 'Misión 6: Costado izquierdo',
+    challengeTitle: 'LÍNEAS Y PINTURA',
+    instruction: 'Fotografía el lateral desde la esquina para ver reflejos, abolladuras y holguras.',
+    frameGuide: 'Encuadra el costado completo',
+    iconEmoji: '🚙'
+  },
+  {
+    id: 'back',
+    label: 'Trasera',
+    stepName: 'Misión 7: Parte trasera',
+    challengeTitle: 'ESCAPE Y PILOTOS',
+    instruction: 'Fotografía el portón del maletero, paragolpes trasero y escape.',
+    frameGuide: 'Encuadra la zaga completa',
+    iconEmoji: '🚘'
+  },
+  {
+    id: 'right',
+    label: 'Lateral Dcho.',
+    stepName: 'Misión 8: Costado derecho',
+    challengeTitle: 'AJUSTE DE PUERTAS',
+    instruction: 'Termina revisando el costado derecho para cerrar la comprobación 360º.',
+    frameGuide: 'Encuadra el lateral derecho',
+    iconEmoji: '🚙'
   }
 ];
 
@@ -98,27 +108,23 @@ interface PhotoScannerProps {
 }
 
 export const PhotoScanner: React.FC<PhotoScannerProps> = ({
-  initialMode = 'full',
   onPhotosComplete,
   onCancel,
   onSelectSampleCar,
   onManualEntry
 }) => {
-  const [scanMode, setScanMode] = useState<'quick' | 'full'>(initialMode);
-  const activeSlots = scanMode === 'quick' ? QUICK_PHOTO_SLOTS : FULL_PHOTO_SLOTS;
-
   const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
   const [capturedPhotos, setCapturedPhotos] = useState<
     Partial<Record<PhotoSlotId, { url: string; base64: string }>>
   >({});
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [mileageInput, setMileageInput] = useState<string>('');
-  const [priceInput, setPriceInput] = useState<string>('');
+  const [stepFeedback, setStepFeedback] = useState<{ slotId: PhotoSlotId; text: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const currentSlot = activeSlots[activeStepIndex] || activeSlots[0];
+  const currentStep = MISSION_STEPS[activeStepIndex] || MISSION_STEPS[0];
   const totalCaptured = Object.keys(capturedPhotos).length;
+  const currentPhoto = capturedPhotos[currentStep.id];
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -131,23 +137,29 @@ export const PhotoScanner: React.FC<PhotoScannerProps> = ({
 
       setCapturedPhotos((prev) => ({
         ...prev,
-        [currentSlot.id]: {
+        [currentStep.id]: {
           url,
           base64: compressedBase64
         }
       }));
 
-      AnalyticsService.track('photo_captured', { slot: currentSlot.id, total: totalCaptured + 1, mode: scanMode });
+      AnalyticsService.track('photo_captured', {
+        slot: currentStep.id,
+        total: totalCaptured + 1
+      });
 
-      // Automatically advance to the next uncaptured slot if available
-      const nextUncapturedIndex = activeSlots.findIndex(
-        (slot, idx) => idx > activeStepIndex && !capturedPhotos[slot.id]
-      );
-      if (nextUncapturedIndex !== -1) {
-        setTimeout(() => setActiveStepIndex(nextUncapturedIndex), 350);
-      } else if (activeStepIndex < activeSlots.length - 1) {
-        setTimeout(() => setActiveStepIndex(activeStepIndex + 1), 350);
-      }
+      // Quick positive feedback
+      setStepFeedback({
+        slotId: currentStep.id,
+        text: '¡Foto guardada correctamente!'
+      });
+
+      setTimeout(() => {
+        setStepFeedback(null);
+        if (activeStepIndex < MISSION_STEPS.length - 1) {
+          setActiveStepIndex((prev) => prev + 1);
+        }
+      }, 700);
     } catch (err) {
       console.error('Error procesando imagen', err);
     } finally {
@@ -164,279 +176,240 @@ export const PhotoScanner: React.FC<PhotoScannerProps> = ({
     });
   };
 
-  const handleStartAnalysis = () => {
-    const mileage = mileageInput ? parseInt(mileageInput, 10) : undefined;
-    const price = priceInput ? parseInt(priceInput, 10) : undefined;
-    AnalyticsService.trackScanStarted(totalCaptured, scanMode);
-    onPhotosComplete(capturedPhotos, mileage, price);
+  const handleFinish = () => {
+    AnalyticsService.trackScanStarted(totalCaptured, 'full');
+    onPhotosComplete(capturedPhotos);
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#0A0A0C] text-white p-4 sm:p-6 max-w-4xl mx-auto flex flex-col justify-between">
-      {/* Top Bar */}
+    <div className="min-h-[calc(100vh-4.5rem)] bg-[#07090E] text-white p-4 sm:p-6 max-w-lg mx-auto flex flex-col justify-between pb-24 sm:pb-8">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
+      {/* Mission Progress Header */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <button
+            id="scanner-back-btn"
             onClick={onCancel}
-            className="min-h-[44px] text-xs font-black uppercase tracking-wider text-white/70 hover:text-white flex items-center gap-1 bg-[#16161D] px-4 py-2 rounded-full border border-white/10 cursor-pointer"
+            className="text-xs font-bold text-white/60 hover:text-white flex items-center gap-1 bg-[#121622] px-3 py-1.5 rounded-full border border-white/10 cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
-            Volver
+            <span>Salir</span>
           </button>
 
-          {/* Mode Switcher */}
-          <div className="flex bg-[#16161D] p-1 rounded-full border border-white/10">
-            <button
-              onClick={() => {
-                setScanMode('quick');
-                if (activeStepIndex >= QUICK_PHOTO_SLOTS.length) setActiveStepIndex(0);
-              }}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer ${
-                scanMode === 'quick' ? 'bg-amber-500 text-black' : 'text-white/60 hover:text-white'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5" />
-              Rápido (4)
-            </button>
-            <button
-              onClick={() => setScanMode('full')}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer ${
-                scanMode === 'full' ? 'bg-cyan-400 text-black' : 'text-white/60 hover:text-white'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Completo (8)
-            </button>
+          {/* Game-like Step Indicators (Dots) */}
+          <div className="flex items-center gap-1.5" title={`${totalCaptured} de ${MISSION_STEPS.length} completadas`}>
+            {MISSION_STEPS.map((step, idx) => {
+              const isDone = !!capturedPhotos[step.id];
+              const isCurrent = idx === activeStepIndex;
+              return (
+                <div
+                  key={step.id}
+                  onClick={() => setActiveStepIndex(idx)}
+                  className={`cursor-pointer transition-all ${
+                    isCurrent
+                      ? 'w-4 h-2 rounded-full bg-cyan-400'
+                      : isDone
+                      ? 'w-2 h-2 rounded-full bg-emerald-400'
+                      : 'w-2 h-2 rounded-full bg-white/20'
+                  }`}
+                />
+              );
+            })}
           </div>
 
-          <div className="text-right">
-            <span className="text-xs text-white/50 font-black uppercase tracking-widest hidden sm:inline">Fotos:</span>
-            <span className="ml-2 px-3 py-1.5 text-xs font-black rounded-full bg-cyan-400 text-black">
-              {totalCaptured} / {activeSlots.length}
-            </span>
-          </div>
+          <span className="px-2.5 py-1 text-[11px] font-black rounded-full bg-[#141824] border border-white/10 text-cyan-300">
+            {activeStepIndex + 1}/{MISSION_STEPS.length}
+          </span>
         </div>
 
-        {/* Demo car & Manual fallback shortcut */}
-        <div className="bg-[#16161D] border border-white/5 rounded-2xl p-3 mb-4 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs text-white/60 font-bold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              ¿Sin fotos a mano? Prueba con un coche demo:
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {SAMPLE_DEMO_CARS.slice(0, 3).map((demo) => (
-                <button
-                  key={demo.id}
-                  onClick={() => onSelectSampleCar(demo)}
-                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-400 hover:text-black text-white text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer"
-                >
-                  {demo.name.split(' ')[0]} {demo.name.split(' ')[1]}
-                </button>
-              ))}
+        {/* Current Mission Challenge */}
+        <div className="text-center my-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-black tracking-widest uppercase mb-1">
+            <span>PASO {activeStepIndex + 1} DE {MISSION_STEPS.length}</span>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-2xl">{currentStep.iconEmoji}</span>
+            <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">
+              {currentStep.challengeTitle}
+            </h2>
+          </div>
+          <p className="text-xs sm:text-sm text-white/70 font-medium max-w-sm mx-auto mt-1">
+            {currentStep.instruction}
+          </p>
+        </div>
+
+        {/* Game-like Camera Viewfinder & Preview */}
+        <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden border-2 border-white/15 bg-[#0A0D15] flex flex-col items-center justify-center mb-4 shadow-2xl">
+          {/* Visual Framing Overlay */}
+          <div className="absolute inset-4 border border-dashed border-cyan-400/30 rounded-2xl pointer-events-none flex flex-col justify-between p-3">
+            <div className="flex justify-between">
+              <span className="w-3 h-3 border-t-2 border-l-2 border-cyan-400" />
+              <span className="w-3 h-3 border-t-2 border-r-2 border-cyan-400" />
+            </div>
+            <div className="text-center">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400/80 bg-black/60 px-2.5 py-1 rounded-full border border-cyan-400/20 backdrop-blur-sm">
+                {currentStep.frameGuide}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="w-3 h-3 border-b-2 border-l-2 border-cyan-400" />
+              <span className="w-3 h-3 border-b-2 border-r-2 border-cyan-400" />
             </div>
           </div>
 
-          {onManualEntry && (
-            <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-              <span className="text-[11px] text-white/50 font-medium">
-                ¿No reconocemos tu coche o prefieres introducir los datos a mano?
+          {currentPhoto ? (
+            <div className="relative w-full h-full group">
+              <img
+                src={currentPhoto.url}
+                alt={currentStep.stepName}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-xl bg-white text-black font-black text-xs uppercase"
+                >
+                  Repetir foto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removePhoto(currentStep.id)}
+                  className="px-3 py-1.5 rounded-xl bg-red-500 text-white font-black text-xs uppercase"
+                >
+                  Eliminar
+                </button>
+              </div>
+              <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-emerald-500 text-black text-[11px] font-black uppercase flex items-center gap-1 shadow-lg">
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                Comprobado
+              </div>
+            </div>
+          ) : (
+            <div className="text-center p-6 space-y-2 z-10">
+              <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 mx-auto flex items-center justify-center text-3xl shadow-inner">
+                {currentStep.iconEmoji}
+              </div>
+              <div className="text-xs font-bold text-white/70">
+                Apunta con la cámara y encuadra aquí
+              </div>
+            </div>
+          )}
+
+          {/* Micro Feedback Toast */}
+          {stepFeedback && (
+            <div className="absolute inset-0 bg-emerald-950/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2 animate-scale-in">
+              <div className="w-12 h-12 rounded-full bg-emerald-400 text-black flex items-center justify-center">
+                <Check className="w-7 h-7 stroke-[3]" />
+              </div>
+              <span className="text-sm font-black uppercase text-emerald-300 tracking-wider">
+                {stepFeedback.text}
               </span>
-              <button
-                type="button"
-                onClick={onManualEntry}
-                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-cyan-400 hover:text-white text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
-              >
-                <span>Introducir coche manualmente</span>
-                <ChevronRight className="w-3 h-3" />
-              </button>
+            </div>
+          )}
+
+          {isProcessing && (
+            <div className="absolute inset-0 bg-black/80 z-30 flex flex-col items-center justify-center gap-2">
+              <div className="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs font-bold text-cyan-300">Comprobando imagen...</span>
             </div>
           )}
         </div>
 
-        {/* Step Navigation Pills */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
-          {activeSlots.map((slot, idx) => {
-            const isCaptured = !!capturedPhotos[slot.id];
-            const isActive = idx === activeStepIndex;
+        {/* Primary Action Button: Take Photo */}
+        <div className="space-y-2.5">
+          <button
+            id="scanner-take-photo-btn"
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-black font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-cyan-500/25 active:scale-[0.99] transition-all cursor-pointer"
+          >
+            <Camera className="w-5 h-5 stroke-[2.5]" />
+            <span>{currentPhoto ? 'Repetir foto' : 'Tomar o subir foto'}</span>
+          </button>
 
-            return (
-              <button
-                key={slot.id}
-                onClick={() => setActiveStepIndex(idx)}
-                className={`flex-shrink-0 min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-cyan-400 text-black shadow-lg'
-                    : isCaptured
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    : 'bg-[#16161D] text-white/60 border border-white/5 hover:bg-white/10'
-                }`}
-              >
-                {isCaptured ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <span className="w-4 h-4 rounded-full bg-black text-[10px] flex items-center justify-center font-black">
-                    {idx + 1}
-                  </span>
-                )}
-                <span>{slot.label.split('. ')[1] || slot.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Guided Conversation Viewport Card */}
-      <div className="flex-1 flex flex-col items-center justify-center my-2">
-        <div className="w-full max-w-md bg-[#16161D] border border-white/10 rounded-[32px] p-6 shadow-2xl relative flex flex-col items-center">
-          
-          {/* Dynamic conversational instruction */}
-          <div className="w-full text-center mb-4">
-            <span className="inline-block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 bg-cyan-400/10 px-3 py-1 rounded-full mb-2">
-              PASO {activeStepIndex + 1} DE {activeSlots.length} • {currentSlot.label}
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black text-white uppercase italic tracking-tight">
-              {capturedPhotos[currentSlot.id]
-                ? '¡Perfecto! Foto registrada.'
-                : currentSlot.guide}
-            </h2>
-            <p className="text-xs text-white/60 mt-1 max-w-xs mx-auto leading-relaxed font-medium">
-              {capturedPhotos[currentSlot.id]
-                ? 'Puedes avanzar al siguiente paso o reemplazar la foto si lo prefieres.'
-                : 'Asegúrate de que la iluminación sea buena y no esté borrosa.'}
-            </p>
-          </div>
-
-          {/* Camera / Photo Canvas */}
-          <div className="w-full h-64 bg-black rounded-2xl border-2 border-dashed border-white/20 hover:border-cyan-400 transition-colors relative overflow-hidden flex flex-col items-center justify-center group">
-            {capturedPhotos[currentSlot.id] ? (
-              <div className="relative w-full h-full">
-                <img
-                  src={capturedPhotos[currentSlot.id]?.url}
-                  alt={currentSlot.label}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-2 right-2 flex gap-1">
-                  <button
-                    onClick={() => removePhoto(currentSlot.id)}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-black/80 text-red-400 hover:text-white hover:bg-red-600 transition-colors cursor-pointer"
-                    title="Eliminar foto"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="absolute bottom-2 left-2 bg-emerald-500 text-black text-xs font-black uppercase px-3 py-1.5 rounded-full flex items-center gap-1">
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  REGISTRADA
-                </div>
-              </div>
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-full flex flex-col items-center justify-center p-4 text-center cursor-pointer min-h-[44px]"
-              >
-                <div className="w-20 h-20 border-2 border-cyan-400/40 rounded-2xl flex items-center justify-center bg-cyan-400/10 mb-3 group-hover:scale-105 group-hover:border-cyan-400 transition-all">
-                  <Camera className="w-9 h-9 text-cyan-400 animate-pulse" />
-                </div>
-                <p className="text-xs font-black uppercase text-cyan-400 tracking-wider">
-                  TOCA AQUÍ PARA TOMAR O SUBIR FOTO
-                </p>
-                <p className="text-[10px] font-bold text-white/40 mt-1 uppercase">
-                  CÁMARA DEL MÓVIL O GALERÍA (JPG, PNG, WEBP)
-                </p>
-              </div>
-            )}
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-
-          {/* Stepper Controls */}
-          <div className="w-full flex items-center justify-between mt-4 gap-2">
+          <div className="flex items-center justify-between gap-2">
             <button
+              type="button"
+              id="scanner-prev-step-btn"
               disabled={activeStepIndex === 0}
               onClick={() => setActiveStepIndex((prev) => Math.max(0, prev - 1))}
-              className="min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-black uppercase text-white/60 bg-black border border-white/10 hover:text-white disabled:opacity-30 flex items-center gap-1 cursor-pointer"
+              className="py-2.5 px-4 rounded-xl bg-[#121622] hover:bg-[#181D2B] text-white/70 hover:text-white text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
-              <ChevronLeft className="w-4 h-4" />
-              Anterior
+              ← Anterior
             </button>
 
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="min-h-[44px] flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider bg-white hover:bg-cyan-50 text-black flex items-center justify-center gap-1.5 shadow-lg cursor-pointer"
-            >
-              <Camera className="w-4 h-4 text-cyan-600" />
-              {capturedPhotos[currentSlot.id] ? 'Cambiar Foto' : 'Tomar Foto'}
-            </button>
-
-            <button
-              disabled={activeStepIndex === activeSlots.length - 1}
-              onClick={() => setActiveStepIndex((prev) => Math.min(activeSlots.length - 1, prev + 1))}
-              className="min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-black uppercase text-white/60 bg-black border border-white/10 hover:text-white disabled:opacity-30 flex items-center gap-1 cursor-pointer"
-            >
-              Siguiente
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            {activeStepIndex < MISSION_STEPS.length - 1 ? (
+              <button
+                type="button"
+                id="scanner-skip-step-btn"
+                onClick={() => setActiveStepIndex((prev) => prev + 1)}
+                className="py-2.5 px-4 rounded-xl bg-[#121622] hover:bg-[#181D2B] text-white/70 hover:text-white text-xs font-bold transition-all cursor-pointer"
+              >
+                Saltar paso →
+              </button>
+            ) : (
+              <button
+                type="button"
+                id="scanner-finish-step-btn"
+                onClick={handleFinish}
+                className="py-2.5 px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Finalizar inspección →
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Frictionless Extra Info (Optional) */}
-      <div className="bg-[#16161D] border border-white/5 rounded-2xl p-3.5 my-3">
-        <div className="text-[11px] font-black uppercase tracking-wider text-white/70 mb-2 flex items-center gap-1.5">
-          <AlertCircle className="w-3.5 h-3.5 text-cyan-400" />
-          DATOS OPCIONALES DEL ANUNCIO (AYUDAN A PRECISAR EL COSTE):
-        </div>
+      {/* Bottom Sticky Action Bar: Finish / Sample / Manual */}
+      <div className="pt-4 border-t border-white/10 space-y-3 mt-4">
+        {totalCaptured > 0 && (
+          <button
+            type="button"
+            id="scanner-complete-analysis-btn"
+            onClick={handleFinish}
+            className="w-full py-3.5 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
+          >
+            <span>Analizar ahora con {totalCaptured} {totalCaptured === 1 ? 'foto' : 'fotos'}</span>
+            <ChevronRight className="w-4 h-4 stroke-[3]" />
+          </button>
+        )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <div>
-            <input
-              type="number"
-              placeholder="Kilómetros aproximados (ej: 145000)"
-              value={mileageInput}
-              onChange={(e) => setMileageInput(e.target.value)}
-              className="w-full min-h-[44px] bg-black border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-cyan-400"
-            />
+        <div className="flex items-center justify-between text-xs text-white/50">
+          {onManualEntry && (
+            <button
+              type="button"
+              onClick={onManualEntry}
+              className="text-cyan-400 hover:underline font-bold text-[11px] cursor-pointer"
+            >
+              Introducir datos a mano
+            </button>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px]">O probar:</span>
+            {SAMPLE_DEMO_CARS.slice(0, 2).map((demo) => (
+              <button
+                key={demo.id}
+                type="button"
+                onClick={() => onSelectSampleCar(demo)}
+                className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold"
+              >
+                {demo.name.split(' ')[0]}
+              </button>
+            ))}
           </div>
-
-          <div>
-            <input
-              type="number"
-              placeholder="Precio anunciado en Euros (€)"
-              value={priceInput}
-              onChange={(e) => setPriceInput(e.target.value)}
-              className="w-full min-h-[44px] bg-black border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-cyan-400"
-            />
-          </div>
         </div>
-      </div>
-
-      {/* Main Bottom Trigger (>44px touch target) */}
-      <div className="pt-2 border-t border-white/10">
-        <button
-          disabled={totalCaptured === 0}
-          onClick={handleStartAnalysis}
-          className={`w-full min-h-[48px] py-4 px-6 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-2xl transition-all ${
-            totalCaptured > 0
-              ? 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-cyan-500/20 scale-100 hover:scale-[1.01] active:scale-95 cursor-pointer'
-              : 'bg-[#16161D] text-white/30 border border-white/5 cursor-not-allowed'
-          }`}
-        >
-          <Sparkles className="w-5 h-5 text-black" />
-          <span>
-            {totalCaptured > 0
-              ? `ANALIZAR COCHE CON IA (${totalCaptured} FOTOS)`
-              : 'HAZ AL MENOS 1 FOTO PARA ANALIZAR'}
-          </span>
-          <ChevronRight className="w-5 h-5" />
-        </button>
       </div>
     </div>
   );

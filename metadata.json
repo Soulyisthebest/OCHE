@@ -1,6 +1,6 @@
 {
-  "name": "CARCHECK AI",
-  "description": "Asistente inteligente de inspección de vehículos usados y cálculo del coste real de compra con IA multimodal.",
+  "name": "OCHE",
+  "description": "Tu mecánico en el bolsillo: inspección visual in situ, cálculo del coste real de entrada y argumentos de negociación para coches de segunda mano.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

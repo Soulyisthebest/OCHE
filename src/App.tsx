@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
+import { BottomNavBar } from './components/BottomNavBar';
 import { HeroHome } from './components/HeroHome';
 import { PhotoScanner } from './components/PhotoScanner';
 import { SellerDataCards } from './components/SellerDataCards';
@@ -14,6 +15,7 @@ import { LearnCars } from './components/LearnCars';
 import { CarChatAssistant } from './components/CarChatAssistant';
 import { CarComparator } from './components/CarComparator';
 import { ManualIdentificationModal, ManualVehicleData } from './components/ManualIdentificationModal';
+import { PilotDashboardModal } from './components/PilotDashboardModal';
 import { CarAnalysisReport, PhotoSlotId } from './types';
 import { VehicleAnalysisSession, AnalysisStatus, VehicleIdentificationCandidate } from './types/analysisSession';
 import { SampleDemoCar } from './data/sampleCars';
@@ -30,6 +32,7 @@ export default function App() {
   const [currentSession, setCurrentSession] = useState<VehicleAnalysisSession | null>(null);
   const [currentReport, setCurrentReport] = useState<CarAnalysisReport | null>(null);
   const [isManualModalOpen, setIsManualModalOpen] = useState<boolean>(false);
+  const [isPilotDashboardOpen, setIsPilotDashboardOpen] = useState<boolean>(false);
   const [countryProfile, setCountryProfile] = useState<CountryProfile>(() => {
     return CountryEngine.autoDetectCountry();
   });
@@ -256,15 +259,34 @@ export default function App() {
         savedCount={savedReports.length}
         currentCountry={countryProfile.countryCode}
         onCountryChange={handleCountryChange}
+        onOpenPilotDashboard={() => setIsPilotDashboardOpen(true)}
+      />
+
+      {/* Pilot Dashboard Modal */}
+      <PilotDashboardModal
+        isOpen={isPilotDashboardOpen}
+        onClose={() => setIsPilotDashboardOpen(false)}
       />
 
       {/* Main View Router */}
-      <main>
+      <main className="pb-16 sm:pb-0">
         {currentView === 'home' && (
           <HeroHome
             onStartScan={handleStartScanFlow}
             onNavigate={(v) => setCurrentView(v)}
             onSelectSample={handleSelectSampleCar}
+            onQuickStartWithData={(data) => {
+              setPendingPhotos({});
+              setTempMileage(data.mileage);
+              setTempPrice(data.price);
+              executeAnalysisPipeline({
+                askingPrice: data.price,
+                mileageKm: data.mileage,
+                year: data.year,
+                brandHint: data.make,
+                modelHint: data.model
+              });
+            }}
             savedCount={savedReports.length}
           />
         )}
@@ -450,6 +472,13 @@ export default function App() {
 
         {currentView === 'learn' && <LearnCars />}
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <BottomNavBar
+        currentView={currentView}
+        onNavigate={(v) => setCurrentView(v)}
+        savedCount={savedReports.length}
+      />
     </div>
   );
 }

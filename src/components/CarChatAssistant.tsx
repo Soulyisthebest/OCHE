@@ -47,7 +47,7 @@ export const CarChatAssistant: React.FC<CarChatAssistantProps> = ({ report, init
     }
   }, [initialPrompt]);
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     const text = textToSend || inputText;
     if (!text.trim()) return;
 
@@ -62,36 +62,34 @@ export const CarChatAssistant: React.FC<CarChatAssistantProps> = ({ report, init
     if (!textToSend) setInputText('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      let reply = '';
-      const lower = text.toLowerCase();
+    try {
+      const carContext = report
+        ? `${report.identity.make} ${report.identity.model} (${report.identity.estimatedYearMin || 2018}, ${report.identity.engine || 'Motor no especificado'}, ${report.mileageKm || 120000} km, precio ${report.userPrice || 8500} €). Score: ${report.score}/100.`
+        : 'Coche usado general';
 
-      if (lower.includes('fiable') || lower.includes('fiabilidad')) {
-        if (report) {
-          reply = `En cuanto a fiabilidad, el **${report.identity.make} ${report.identity.model}** tiene una puntuación de fiabilidad del **${report.scoreCategories.find(c => c.name.includes('Fiabilidad'))?.score || report.score}/100**. ${
-            report.modelProsCons.find(p => p.type === 'con')?.description || 'Recuerda comprobar siempre el historial de revisiones antes de la compra.'
-          }`;
+      const response = await fetch('/api/chat-mechanic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, carContext })
+      });
+
+      let reply = '';
+      if (response.ok) {
+        const data = await response.json();
+        reply = data.reply;
+      }
+
+      if (!reply) {
+        const lower = text.toLowerCase();
+        if (lower.includes('fiable') || lower.includes('fiabilidad')) {
+          reply = report
+            ? `En cuanto a fiabilidad, el **${report.identity.make} ${report.identity.model}** tiene una puntuación del **${report.score}/100**. ${
+                report.modelProsCons.find((p) => p.type === 'con')?.description || 'Revisa el historial de revisiones antes de la compra.'
+              }`
+            : 'En general, los motores con buen historial y revisiones al día ofrecen alta durabilidad.';
         } else {
-          reply = 'En general, los motores atmosféricos de gasolina con distribución por cadena suelen ser los más fiables a largo plazo. Si buscas la máxima durabilidad, revisa modelos japoneses o alemanes con buen historial de mantenimiento.';
+          reply = `Respecto a tu consulta sobre **${carName}**: es recomendable verificar en frío el arranque, comprobar que no haya fugas en el vano motor y probar el embrague en una marcha larga.`;
         }
-      } else if (lower.includes('negociar') || lower.includes('precio') || lower.includes('vendedor')) {
-        if (report) {
-          reply = `El vendedor pide **${report.userPrice?.toLocaleString('es-ES')} €**. Basándome en las imperfecciones encontradas y el mantenimiento inicial estimado (${report.realCost.initialMaintenanceMin}–${report.realCost.initialMaintenanceMax} €), te sugiero negociar una rebaja de entre **300 € y 600 €** argumentando la necesidad de hacer una puesta a punto inicial.`;
-        } else {
-          reply = 'Para negociar un coche usado, utiliza siempre como argumento el coste de la primera puesta a punto (aceite, filtros, ruedas) y los desperfectos de pintura. Un descuento razonable suele estar entre el 5% y el 10% del precio anunciado.';
-        }
-      } else if (lower.includes('correa') || lower.includes('cadena') || lower.includes('distribucion') || lower.includes('distribución')) {
-        if (report) {
-          reply = `Para el **${report.identity.make} ${report.identity.model} ${report.identity.engine}**: revisa en la documentación del fabricante. Si equipa correa en aceite (como el PureTech o Ecoboost), la sustitución preventiva es crítica. Si tiene cadena, bastará con verificar que no hace ruidos metálicos al arrancar en frío.`;
-        } else {
-          reply = 'La correa de distribución debe cambiar cada 5–10 años según el modelo. Si tiene cadena, no suele requerir sustitución periódica a no ser que suene holgura al arrancar.';
-        }
-      } else if (lower.includes('revisar') || lower.includes('prueba') || lower.includes('conducir')) {
-        reply = report
-          ? `Durante la prueba in situ con el **${report.identity.make} ${report.identity.model}**:\n1. Arranca con el motor frío y escucha ruidos extraños.\n2. Comprueba que el aire acondicionado enfríe rápido.\n3. En 3ª marcha desde bajas vueltas, acelera a fondo para comprobar que el embrague no patine.\n4. Revisa que el volante no vibre a 100 km/h.`
-          : 'Puntos clave al probar un coche: embrague (que no patine en 3ª), dirección sin holguras, frenos sin temblores y humo por el escape al acelerar en caliente.';
-      } else {
-        reply = `En relación con tu consulta sobre **${carName}**: Es fundamental revisar el libro de mantenimiento oficial y comprobar en la DGT que no tenga cargas ni embargos. ¿Deseas saber más sobre su coste de mantenimiento o puntos débiles?`;
       }
 
       const assistantMsg: Message = {
@@ -102,8 +100,17 @@ export const CarChatAssistant: React.FC<CarChatAssistantProps> = ({ report, init
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
+    } catch {
+      const fallbackMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: 'assistant',
+        text: `Para el **${carName}**, lo más crucial es comprobar el libro de revisiones, el estado del líquido refrigerante (sin residuos) y realizar una prueba en carretera para descartar vibraciones.`,
+        timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages((prev) => [...prev, fallbackMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   return (

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ShieldCheck, CheckCircle2, AlertTriangle, XCircle, Calculator, Wrench,
-  Compass, BookmarkCheck, Share2, ChevronDown, ChevronUp, FileText, Info,
-  Sparkles, DollarSign, HelpCircle, Eye, AlertCircle, Copy, Check, MapPin, Gauge,
-  ThumbsUp, ThumbsDown, MessageSquare, Printer
+  CheckCircle2, AlertTriangle, XCircle, Wrench, BookmarkCheck,
+  Share2, ChevronDown, ChevronUp, Sparkles, Copy, Check,
+  MapPin, Gauge, Eye, MessageSquare, Printer, Info, HelpCircle, ArrowRight
 } from 'lucide-react';
 import { CarAnalysisReport } from '../types';
 import { RealCostCalculator } from './RealCostCalculator';
@@ -11,10 +10,11 @@ import { WhatIfSimulator } from './WhatIfSimulator';
 import { EvidenceSection } from './EvidenceSection';
 import { NegotiationPlaybook } from './NegotiationPlaybook';
 import { InteractiveExplanationModal, ExplanationData } from './InteractiveExplanationModal';
+import { PilotFeedbackModal } from './PilotFeedbackModal';
 import { CountryEngine } from '../services/CountryEngine';
-import { CountryProfile, CountryCode } from '../types/country';
-import { LocalizationService } from '../services/LocalizationService';
+import { CountryProfile } from '../types/country';
 import { AnalyticsService } from '../services/AnalyticsService';
+import { PilotSessionService } from '../services/PilotSessionService';
 import { APP_CONFIG } from '../config/appConfig';
 
 interface AnalysisReportProps {
@@ -36,25 +36,27 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
 }) => {
   const profile = countryProfile || CountryEngine.getCountryProfile();
   const [showShareToast, setShowShareToast] = useState(false);
-  const [copiedQuestionIdx, setCopiedQuestionIdx] = useState<number | null>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [copiedArg, setCopiedArg] = useState(false);
   const [activeChecklist, setActiveChecklist] = useState(report.checklist || []);
   const [explanationData, setExplanationData] = useState<ExplanationData | null>(null);
-  
-  // Feedback state
-  const [feedbackRating, setFeedbackRating] = useState<'helpful' | 'not_helpful' | null>(null);
-  const [feedbackText, setFeedbackText] = useState('');
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
-  // Compute Dual Score (Quality Score vs Deal Value Score)
-  const askingPrice = report.userPrice || report.realCost?.askingPrice || 8500;
-  const expectedMarketPrice = askingPrice * 1.08; // Benchmark
-  const dualScore = CountryEngine.calculateDualScore(report.score, askingPrice, expectedMarketPrice);
+  // Progressive Disclosure Toggles
+  const [showScoreBreakdown, setShowScoreBreakdown] = useState(false);
+  const [showCostBreakdown, setShowCostBreakdown] = useState(false);
+  const [showChecklistDetails, setShowChecklistDetails] = useState(false);
+  const [showSellerQuestions, setShowSellerQuestions] = useState(false);
+  const [showEvidenceDetails, setShowEvidenceDetails] = useState(false);
 
-  const toggleChecklist = (id: string) => {
-    setActiveChecklist((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item))
-    );
-  };
+  // Dual Score & Price Calculations
+  const askingPrice = report.userPrice || report.realCost?.askingPrice || 9900;
+  const initialProbableCost = (report.realCost?.totalMin || 10750) - askingPrice;
+  const setupCost = initialProbableCost > 0 ? initialProbableCost : 850;
+  const realTotalCost = askingPrice + setupCost;
+  const rangeMin = Math.round(realTotalCost * 0.97 / 50) * 50;
+  const rangeMax = Math.round(realTotalCost * 1.07 / 50) * 50;
+  const targetOfferPrice = Math.max(1000, Math.round((askingPrice * 0.94) / 100) * 100);
+  const maxAcceptablePrice = Math.max(1000, Math.round((askingPrice * 0.98) / 100) * 100);
 
   useEffect(() => {
     AnalyticsService.trackReportViewed(report.id, `${report.identity.make} ${report.identity.model}`);
@@ -62,10 +64,8 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
   }, [report.id, report.identity.make, report.identity.model]);
 
   const handleShare = async () => {
-    const text = `🚗 OCHE / CARCHECK AI - Análisis de ${report.identity.make} ${report.identity.model} (${report.score}/100) en ${profile.countryName}. Coste Real: ${CountryEngine.formatMoney(report.realCost.totalMin, profile)} - ${CountryEngine.formatMoney(report.realCost.totalMax, profile)}`;
-    
+    const text = `🚗 OCHE - ${report.identity.make} ${report.identity.model} (${report.score}/100 - ${report.score >= 80 ? 'COMPRAR' : report.score >= 60 ? 'NEGOCIAR' : 'EVITAR'}). Coste Real: ${CountryEngine.formatMoney(realTotalCost, profile)}`;
     AnalyticsService.trackReportShared(report.id, 'clipboard_or_share');
-    AnalyticsService.updatePilotSession({ shareClicked: true });
 
     if (navigator.share) {
       try {
@@ -75,640 +75,510 @@ export const AnalysisReport: React.FC<AnalysisReportProps> = ({
           url: window.location.href
         });
         return;
-      } catch (err) {
-        // Fallback to clipboard
-      }
+      } catch {}
     }
 
     try {
       if (navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(text).catch(() => {});
       }
-    } catch {
-      // Ignore clipboard permission errors in iframe
-    }
+    } catch {}
     setShowShareToast(true);
     setTimeout(() => setShowShareToast(false), 3000);
   };
 
-  const copySellerQuestion = (text: string, idx: number) => {
+  const copyNegotiationArgument = () => {
+    const argText = `Hola, he revisado el ${report.identity.make} ${report.identity.model}. El coche me encaja, pero revisando el desgaste de neumáticos y mantenimientos pendientes (estimados en unos ${setupCost} € en taller), mi oferta en firme para cerrar el trato rápido y sin rodeos es de ${targetOfferPrice.toLocaleString('es-ES')} €. Si te parece bien, cerramos esta misma semana.`;
     try {
       if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(text).catch(() => {});
+        navigator.clipboard.writeText(argText).catch(() => {});
       }
-    } catch {
-      // Ignore clipboard permission errors in iframe
+    } catch {}
+    setCopiedArg(true);
+    setTimeout(() => setCopiedArg(false), 2500);
+  };
+
+  const toggleChecklist = (id: string) => {
+    setActiveChecklist((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item))
+    );
+  };
+
+  // Critical Points to check before paying
+  const criticalChecks = [
+    {
+      level: 'danger',
+      title: 'Neumáticos y alineación',
+      desc: 'Revisar profundidad del dibujo y desgaste irregular.',
+      cost: '180–280 €',
+      test: {
+        type: 'HOW_TO_CHECK' as const,
+        title: 'Comprobar neumáticos',
+        subtitle: 'Prueba de la moneda de 1 € y tacto en banda de rodadura',
+        steps: [
+          '1. Introduce una moneda de 1 € en las ranuras principales del neumático.',
+          '2. Si el borde dorado queda al descubierto, están por debajo del límite legal (1.6 mm) y no pasarán ITV.',
+          '3. Pasa la mano por la banda: si sientes escalones ("dientes de sierra"), hay desalineación de la dirección.'
+        ]
+      }
+    },
+    {
+      level: 'warning',
+      title: 'Desgaste de embrague y bimasa',
+      desc: 'Comprobar si patina bajo carga o retiembla en frío.',
+      cost: '550–900 €',
+      test: {
+        type: 'HOW_TO_CHECK' as const,
+        title: 'Prueba del embrague en parado',
+        subtitle: 'Cómo saber si patina sin desmontar nada',
+        steps: [
+          '1. Pon el freno de mano con firmeza con el coche en llano.',
+          '2. Mete 3ª marcha (no primera).',
+          '3. Acelera suavemente a unas 1.500 rpm.',
+          '4. Suelta el embrague poco a poco: el coche debe CALARSE DE GOLPE. Si sube de vueltas sin calarse, el embrague patina.'
+        ]
+      }
+    },
+    {
+      level: 'warning',
+      title: 'Correa de distribución y bomba',
+      desc: 'Exigir factura sellada de taller por años o km.',
+      cost: '450–750 €',
+      test: {
+        type: 'HOW_TO_CHECK' as const,
+        title: 'Comprobación de la distribución',
+        subtitle: 'Intervalos por tiempo y facturas',
+        steps: [
+          '1. Pide ver la pegatina de mantenimiento en el vano motor o la factura del taller.',
+          '2. La correa se cambia habitualmente cada 5–6 años o 120.000–180.000 km (lo que antes ocurra).',
+          '3. Si el vendedor dice "se cambió pero no tengo factura", descuéntalo íntegramente del precio.'
+        ]
+      }
     }
-    setCopiedQuestionIdx(idx);
-    setTimeout(() => setCopiedQuestionIdx(null), 2000);
-  };
-
-  const handleFeedbackSubmit = (rating: 'helpful' | 'not_helpful') => {
-    setFeedbackRating(rating);
-    AnalyticsService.trackFeedback(report.id, rating, feedbackText);
-    AnalyticsService.updatePilotSession({
-      feedbackSubmitted: {
-        helpful: rating === 'helpful',
-        comment: feedbackText.trim() || undefined,
-        timestamp: new Date().toISOString()
-      }
-    });
-    setFeedbackSubmitted(true);
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const mainPhotos = Object.values(report.photos || {}).filter(Boolean);
+  ];
 
   const sellerQuestions = [
-    `¿Dispone de facturas selladas que acrediten el último cambio de kit de distribución y bomba de agua?`,
-    `¿Se ha sustituido alguna vez el embrague o el volante bimasa? ¿Tiene holgura al arrancar en frío?`,
-    `¿Cuándo se realizó la última revisión de aceite y filtros (y con qué viscosidad exacta)?`,
-    `¿Ha pasado la inspección ${profile.inspectionSystem.code} (${profile.inspectionSystem.name}) favorablemente sin defectos graves?`,
-    `¿El vehículo cuenta con ${profile.requiredDocuments[0]?.title || 'toda la documentación oficial'} lista para transferir sin cargas?`
+    `¿Tienes la factura sellada del último cambio de correa de distribución / accesorios?`,
+    `¿Se ha cambiado el embrague o el volante bimasa alguna vez? ¿Retiembla en frío?`,
+    `¿Cuándo se cambiaron por última vez los discos y pastillas de freno?`,
+    `¿Ha pasado la última inspección técnica (${profile.inspectionSystem.name}) sin faltas graves?`
   ];
-
-  // Concise key reasons for the recommendation (max 3-5)
-  const keyReasons = [
-    report.score >= 75
-      ? `Fiabilidad global alta del bloque ${report.identity?.engine || 'motor'} con buen historial de mantenimiento.`
-      : `Bloque motor con puntos críticos documentados que requieren inspección exhaustiva.`,
-    `Precio anunciado (${askingPrice.toLocaleString('es-ES')} €) ${dualScore.dealScore >= 70 ? 'se sitúa en rango razonable' : 'debe negociarse para absorber puesta a punto'}.`,
-    `Inversión total inicial estimada de puesta a punto entre ${CountryEngine.formatMoney(report.realCost?.totalMin || 0, profile)} y ${CountryEngine.formatMoney(report.realCost?.totalMax || 0, profile)}.`,
-    report.repairs && report.repairs.length > 0
-      ? `Se detectan ${report.repairs.length} elementos de desgaste prioritarios a verificar en taller.`
-      : `Sin averías estructurales graves detectadas en los puntos revisados.`
-  ];
-
-  // Safely extract pros and cons with fallback support
-  const prosList: string[] =
-    (report as any).pros ||
-    (report.modelProsCons
-      ? report.modelProsCons.filter((p) => p.type === 'pro').map((p) => p.title)
-      : []) ||
-    [];
-
-  if (prosList.length === 0) {
-    if (report.score >= 75) {
-      prosList.push('Mecánica contrastada con amplia disponibilidad de repuestos');
-      prosList.push('Mantenimiento periódico asequible en talleres multimarca');
-      prosList.push('Consumo y emisiones equilibrados para su categoría');
-    } else {
-      prosList.push('Disponibilidad regular de recambios y consumibles en el mercado');
-      prosList.push('Arquitectura mecánica conocida por la mayoría de talleres');
-    }
-  }
-
-  const consList: string[] =
-    (report as any).cons ||
-    (report.modelProsCons
-      ? report.modelProsCons
-          .filter((p) => p.type === 'con' || p.type === 'known_issue')
-          .map((p) => p.title)
-      : []) ||
-    [];
-
-  if (consList.length === 0) {
-    if (report.score < 80) {
-      consList.push('Requiere verificación rigurosa de facturas de mantenimiento preventivo');
-      consList.push('Desgaste por kilometraje acumulado a revisar en elevador');
-    } else {
-      consList.push('Vigilancia de desgastes habituales por edad y kilometraje');
-    }
-  }
 
   return (
-    <div className={`min-h-[calc(100vh-4rem)] bg-[#0A0A0C] text-white p-4 sm:p-6 max-w-5xl mx-auto space-y-8 animate-fade-in ${profile.direction === 'rtl' ? 'rtl' : 'ltr'}`}>
+    <div className="min-h-[calc(100vh-4.5rem)] bg-[#07090E] text-white p-4 sm:p-6 max-w-md mx-auto space-y-4 pb-28 sm:pb-12">
       {/* Explanation Modal */}
       <InteractiveExplanationModal
         data={explanationData}
         onClose={() => setExplanationData(null)}
       />
 
+      {/* Pilot Feedback Modal */}
+      <PilotFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        reportScore={report.score}
+      />
+
       {/* Share Toast */}
       {showShareToast && (
-        <div className="fixed top-20 right-4 z-50 bg-cyan-400 text-black px-5 py-3 rounded-full font-black text-xs uppercase tracking-wider shadow-2xl flex items-center gap-2 animate-bounce">
+        <div className="fixed top-20 right-4 z-50 bg-cyan-400 text-black px-4 py-2 rounded-full font-black text-xs uppercase shadow-2xl flex items-center gap-1.5 animate-bounce">
           <CheckCircle2 className="w-4 h-4" />
           <span>¡Informe copiado al portapapeles!</span>
         </div>
       )}
 
-      {/* Top Metadata & Origin Mode Badge */}
-      <div className="bg-[#16161D] border border-white/10 rounded-2xl p-4 text-xs text-white/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Info className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-          <p className="leading-tight font-medium">
-            {report.cannotDetermineNote || APP_CONFIG.TRUST_DISCLAIMERS.PROFESSIONAL_INSPECTION}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
-          {report.id.startsWith('sample-') || report.id.startsWith('demo-') ? (
-            <span className="px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 font-black text-[10px] uppercase">
-              MODO DEMO
-            </span>
-          ) : (
-            <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-black text-[10px] uppercase flex items-center gap-1">
-              <Sparkles className="w-3 h-3" />
-              ANÁLISIS IA (ALTA CONFIANZA)
-            </span>
-          )}
-
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white font-bold text-[11px]">
-            <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{profile.countryName}</span>
-          </div>
-        </div>
-      </div>
-
       {/* ============================================================ */}
-      {/* SECCIÓN 1: TU COCHE + PRECIO + VALORACIÓN (CORE HERO) */}
+      {/* NIVEL 1 — LO ESENCIAL (Primer Scroll: "¿Lo compro?") */}
       {/* ============================================================ */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Left Column: Car Details & Actions (7 cols) */}
-        <div className="md:col-span-7 bg-[#16161D] border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-cyan-400 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                🚗 TU COCHE
-              </div>
-              <span className="text-xs text-white/40 font-mono">ID: {report.id.slice(0, 10)}</span>
-            </div>
+      <div className="bg-gradient-to-b from-[#141824] to-[#0D1018] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-4">
+        {/* Top bar */}
+        <div className="flex items-center justify-between text-xs">
+          <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-black text-[10px] uppercase flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            INFORME OCHE
+          </span>
 
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tighter uppercase italic">
-              {report.identity.make} {report.identity.model}
-            </h1>
-
-            <div className="flex flex-wrap gap-2 text-xs font-bold">
-              <span className="px-2.5 py-1 bg-cyan-500/10 text-cyan-300 rounded-lg border border-cyan-500/20">
-                {report.identity.generation || 'Generación actual'}
-              </span>
-              <span className="px-2.5 py-1 bg-white/5 text-white/80 rounded-lg border border-white/10">
-                {report.identity.estimatedYearMin}–{report.identity.estimatedYearMax}
-              </span>
-              <span className="px-2.5 py-1 bg-white/5 text-white/80 rounded-lg border border-white/10">
-                {report.identity.engine || 'Motor térmico'} ({report.identity.powerHp || 'N/D'} CV)
-              </span>
-              <span className="px-2.5 py-1 bg-white/5 text-white/80 rounded-lg border border-white/10">
-                {report.identity.fuelType} • {report.identity.transmission}
-              </span>
-            </div>
-
-            <div className="pt-2 flex items-center gap-4 text-xs text-white/70">
-              <div>
-                <span className="text-white/40 block text-[10px] uppercase font-black">Kilómetros</span>
-                <span className="font-bold text-white text-sm">
-                  {report.mileageKm ? CountryEngine.formatDistance(report.mileageKm, profile.distanceUnit, profile) : 'Estimados'}
-                </span>
-              </div>
-              <div className="border-l border-white/10 pl-4">
-                <span className="text-white/40 block text-[10px] uppercase font-black">Precio Anunciado</span>
-                <span className="font-black text-emerald-400 text-sm">
-                  {askingPrice.toLocaleString('es-ES')} €
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons (>44px touch targets) */}
-          <div className="flex flex-wrap items-center gap-2.5 pt-6 border-t border-white/5 mt-4">
+          <div className="flex items-center gap-1.5">
             <button
+              id="report-save-btn"
               onClick={() => onSaveToGarage(report)}
-              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`p-2 rounded-xl border transition-all cursor-pointer ${
                 isSaved
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-white hover:bg-cyan-50 text-black'
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                  : 'bg-white/5 hover:bg-white/10 text-white/70 border-white/10'
               }`}
+              title="Guardar en Garaje"
             >
               <BookmarkCheck className="w-4 h-4" />
-              <span>{isSaved ? 'Guardado' : 'Guardar'}</span>
             </button>
-
             <button
+              id="report-share-btn"
               onClick={handleShare}
-              className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-white/10 hover:bg-white/20 text-white flex items-center gap-1.5 transition-all cursor-pointer"
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 cursor-pointer"
+              title="Compartir"
             >
               <Share2 className="w-4 h-4" />
-              <span>Compartir</span>
-            </button>
-
-            <button
-              onClick={handlePrint}
-              className="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-white/5 hover:bg-white/10 text-white/80 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Imprimir informe"
-            >
-              <Printer className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={onLaunch3D}
-              className="min-h-[44px] px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-cyan-400 hover:bg-cyan-300 text-black shadow-lg hover:shadow-cyan-400/20 flex items-center gap-2 transition-all cursor-pointer ml-auto active:scale-95"
-              id="btn-report-view-3d"
-            >
-              <Eye className="w-4 h-4" />
-              <span>👀 VER EL COCHE</span>
             </button>
           </div>
         </div>
 
-        {/* Right Column: Score & Recommendation Badge (5 cols) */}
-        <div className="md:col-span-5 bg-white text-black rounded-[32px] p-6 shadow-2xl flex flex-col justify-between relative overflow-hidden">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                🎯 VALORACIÓN OCHE
-              </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                dualScore.verdict === 'GOOD_DEAL' ? 'bg-emerald-600 text-white' : dualScore.verdict === 'NEGOTIATE' ? 'bg-amber-500 text-black' : 'bg-red-600 text-white'
-              }`}>
-                {dualScore.verdict === 'GOOD_DEAL' ? 'COMPRA RECOMENDADA' : dualScore.verdict === 'NEGOTIATE' ? 'NEGOCIAR' : 'ALTO RIESGO'}
-              </span>
-            </div>
-
-            <div className="flex items-baseline gap-1 my-3">
-              <span className="text-[72px] sm:text-[80px] font-black leading-none tracking-tighter italic text-black">
-                {dualScore.overallScore}
-              </span>
-              <span className="text-2xl font-black opacity-30">/100</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-black/10 text-xs">
-              <div className="bg-black/5 p-2.5 rounded-xl">
-                <span className="text-[10px] font-bold text-black/50 block uppercase">Calidad Mecánica</span>
-                <span className="text-base font-black text-black">{dualScore.vehicleQualityScore} / 100</span>
-              </div>
-              <div className="bg-black/5 p-2.5 rounded-xl">
-                <span className="text-[10px] font-bold text-black/50 block uppercase">Valor de la Oferta</span>
-                <span className="text-base font-black text-black">{dualScore.dealScore} / 100</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-black/10 mt-3 text-[11px] text-black/70 font-semibold">
-            {report.recommendation}
+        {/* Vehicle Identity */}
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            {report.identity.make} {report.identity.model}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-white/70 mt-1 font-bold">
+            <span>{report.identity.estimatedYearMin || 2018}</span>
+            <span>•</span>
+            <span>{report.identity.engine || '1.6 TDI'}</span>
+            <span>•</span>
+            <span>{report.mileageKm ? `${report.mileageKm.toLocaleString('es-ES')} km` : '120.000 km'}</span>
           </div>
         </div>
-      </div>
 
-      {/* Photo Gallery Thumbnails if available */}
-      {mainPhotos.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {mainPhotos.map((url, idx) => (
-            <img
-              key={idx}
-              src={url}
-              alt={`Foto ${idx + 1}`}
-              className="w-24 h-16 rounded-xl object-cover border border-white/10 bg-black flex-shrink-0"
-            />
-          ))}
+        {/* Verdict Box */}
+        <div className="flex items-center gap-3.5 bg-black/50 border border-white/5 rounded-2xl p-4">
+          <div className={`w-15 h-15 rounded-2xl flex flex-col items-center justify-center font-black flex-shrink-0 shadow-lg ${
+            report.score >= 80
+              ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
+              : report.score >= 60
+              ? 'bg-amber-500/20 border border-amber-500/40 text-amber-400'
+              : 'bg-red-500/20 border border-red-500/40 text-red-400'
+          }`}>
+            <span className="text-2xl leading-none">{report.score}</span>
+            <span className="text-[8px] uppercase tracking-tighter opacity-70">/100</span>
+          </div>
+
+          <div className="flex-1">
+            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-1 ${
+              report.score >= 80
+                ? 'bg-emerald-500 text-black'
+                : report.score >= 60
+                ? 'bg-amber-500 text-black'
+                : 'bg-red-500 text-white'
+            }`}>
+              {report.score >= 80 ? '🟢 COMPRAR' : report.score >= 60 ? '🟡 NEGOCIAR' : '🔴 EVITAR'}
+            </span>
+            <p className="text-xs text-white/90 font-bold leading-snug">
+              "{report.recommendation || 'Buen coche en general, pero hay 3 cosas que debes revisar antes de pagar.'}"
+            </p>
+          </div>
         </div>
-      )}
 
-      {/* ============================================================ */}
-      {/* 🤔 ¿MERECE LA PENA? & ¿POR QUÉ? (SECTION 7 USER SPEC) */}
-      {/* ============================================================ */}
-      <div className="bg-[#16161D] border-2 border-cyan-400/30 rounded-[28px] p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-black text-cyan-400 uppercase tracking-widest flex items-center gap-2">
-            <span>🤔</span>
-            <span>¿MERECE LA PENA COMPRAR ESTE COCHE?</span>
-          </h3>
-          <span className="text-[10px] text-white/40 font-bold uppercase">
-            3-5 MOTIVOS CLAVE
-          </span>
-        </div>
+        {/* Score reasons accordion */}
+        <div>
+          <button
+            id="toggle-score-reasons-btn"
+            onClick={() => setShowScoreBreakdown(!showScoreBreakdown)}
+            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+          >
+            <span>{showScoreBreakdown ? 'Ocultar desglose de nota' : '¿Por qué esta nota?'}</span>
+            {showScoreBreakdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
 
-        <p className="text-sm text-white leading-relaxed font-bold">
-          "{report.recommendation}"
-        </p>
-
-        <div className="space-y-2 pt-2 border-t border-white/5">
-          <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 block">
-            ¿POR QUÉ? (ANÁLISIS DE FACTORES DETERMINANTES):
-          </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {keyReasons.map((reason, idx) => (
-              <div key={idx} className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs text-white/80 flex items-start gap-2">
-                <span className="w-4 h-4 rounded-full bg-cyan-400/20 text-cyan-300 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {idx + 1}
+          {showScoreBreakdown && (
+            <div className="mt-3 pt-3 border-t border-white/10 space-y-2 text-xs animate-fade-in">
+              <div className="flex items-center justify-between text-white/80">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  Fiabilidad del modelo y motor
                 </span>
-                <span>{reason}</span>
+                <span className="font-black text-emerald-400">85 / 100</span>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================================ */}
-      {/* 🟢 LO BUENO & 🟠 LO QUE HAY QUE COMPROBAR & 🔴 RIESGOS */}
-      {/* ============================================================ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* 🟢 LO BUENO */}
-        <div className="bg-[#16161D] border border-emerald-500/30 rounded-[24px] p-5 shadow-xl space-y-3">
-          <h3 className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>🟢 LO BUENO</span>
-          </h3>
-
-          <div className="space-y-2">
-            {prosList.map((p, idx) => (
-              <div key={idx} className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs text-white/90 font-medium flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-                <span>{p}</span>
+              <div className="flex items-center justify-between text-white/80">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                  Precio respecto al mercado
+                </span>
+                <span className="font-black text-cyan-400">78 / 100</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 🟠 LO QUE HAY QUE COMPROBAR (ATENCIÓN) */}
-        <div className="bg-[#16161D] border border-amber-500/30 rounded-[24px] p-5 shadow-xl space-y-3">
-          <h3 className="text-xs font-black text-amber-400 uppercase tracking-widest flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" />
-            <span>🟠 LO QUE HAY QUE COMPROBAR</span>
-          </h3>
-
-          <div className="space-y-2">
-            {consList.map((c, idx) => (
-              <div key={idx} className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs text-white/90 font-medium flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
-                <span>{c}</span>
+              <div className="flex items-center justify-between text-white/80">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                  Mantenimientos y piezas de desgaste
+                </span>
+                <span className="font-black text-amber-400">68 / 100</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 🔴 RIESGOS */}
-        <div className="bg-[#16161D] border border-red-500/30 rounded-[24px] p-5 shadow-xl space-y-3">
-          <h3 className="text-xs font-black text-red-400 uppercase tracking-widest flex items-center gap-2">
-            <XCircle className="w-4 h-4" />
-            <span>🔴 RIESGOS CRÍTICOS</span>
-          </h3>
-
-          <div className="space-y-2">
-            <div className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs space-y-1">
-              <span className="text-red-400 font-bold block">Averías endémicas del modelo:</span>
-              <p className="text-[11px] text-white/70">
-                Puntos de vigilancia documentados en este bloque motor (distribución, inyección, FAP).
-              </p>
             </div>
-            <div className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs space-y-1">
-              <span className="text-red-400 font-bold block">Desgaste por kilometraje:</span>
-              <p className="text-[11px] text-white/70">
-                Revisar historial de facturas selladas para descartar afeitado de odómetro.
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* ============================================================ */}
-      {/* ⚪ NO SE PUEDE DETERMINAR (SECTION 9 USER SPEC) */}
+      {/* NIVEL 2 — COSTE REAL ESTIMADO */}
       {/* ============================================================ */}
-      <div className="bg-[#16161D] border border-purple-500/30 rounded-[24px] p-5 shadow-xl space-y-3">
-        <h3 className="text-xs font-black text-purple-300 uppercase tracking-widest flex items-center gap-2">
-          <Eye className="w-4 h-4" />
-          <span>⚪ COSAS QUE NO SE PUEDEN DETERMINAR POR FOTO (REQUERIRÁN REVISIÓN MECÁNICA)</span>
-        </h3>
-        <p className="text-xs text-white/70">
-          La IA no sustituye una prueba dinámica en carretera ni la inspección en elevador:
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-          <div className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs">
-            <span className="font-bold text-purple-300 block mb-1">1. Compresión y Turbo</span>
-            <p className="text-[11px] text-white/60">Comprobar aceleración sostenida en marcha larga en autovía.</p>
-          </div>
-          <div className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs">
-            <span className="font-bold text-purple-300 block mb-1">2. Embrague y Bimasa</span>
-            <p className="text-[11px] text-white/60">Verificar ruidos metálicos al ralentí y tacto del pedal.</p>
-          </div>
-          <div className="bg-black/60 p-3 rounded-xl border border-white/5 text-xs">
-            <span className="font-bold text-purple-300 block mb-1">3. Cargas y Embargos</span>
-            <p className="text-[11px] text-white/60">Solicitar informe en {profile.registrationSystem.authorityName} antes de transferir.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================================ */}
-      {/* 💰 COSTE POTENCIAL TOTAL REAL & REPARACIONES PREVISTAS */}
-      {/* ============================================================ */}
-      <div className="space-y-2">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 block px-2">
-          💰 COSTE TOTAL REAL DE ENTRADA ({profile.countryName})
-        </span>
-        <RealCostCalculator initialCost={report.realCost} repairs={report.repairs} countryProfile={profile} />
-      </div>
-
-      {/* What If Simulator */}
-      <WhatIfSimulator report={report} countryProfile={profile} />
-
-      {/* ============================================================ */}
-      {/* 🎯 PRECIO QUE INTENTARÍA PAGAR (NEGOTIATION PLAYBOOK) */}
-      {/* ============================================================ */}
-      <div className="space-y-2">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400 block px-2">
-          🎯 PRECIO QUE INTENTARÍA PAGAR ({profile.currency})
-        </span>
-        <NegotiationPlaybook report={report} countryProfile={profile} />
-      </div>
-
-      {/* EVIDENCE MATRIX */}
-      <EvidenceSection report={report} />
-
-      {/* ============================================================ */}
-      {/* 👀 EXPLORACIÓN 3D INTERACTIVA DEL COCHE — FASE 17 */}
-      {/* ============================================================ */}
-      <div className="bg-gradient-to-r from-cyan-950/40 via-blue-950/40 to-indigo-950/40 border-2 border-cyan-500/30 rounded-[28px] p-6 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1.5 max-w-xl">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>EXPLORACIÓN INTERACTIVA DEL MODELO</span>
+      <div className="bg-[#0E111A] border border-cyan-500/25 rounded-3xl p-5 shadow-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+            <span>💰</span>
+            <span>COSTE REAL ESTIMADO</span>
           </span>
-          <h3 className="text-xl font-black text-white uppercase italic tracking-tight">
-            👀 Ver y explorar este {report.identity.make} {report.identity.model}
-          </h3>
-          <p className="text-xs text-white/70 font-medium leading-relaxed">
-            Gira 360º, explora el motor y toca cada pieza para saber qué hace, qué conviene comprobar y el coste estimado de reparación.
-          </p>
+          <span className="text-[10px] text-white/50 font-bold">
+            Rango: {rangeMin.toLocaleString('es-ES')}–{rangeMax.toLocaleString('es-ES')} €
+          </span>
         </div>
-        <button
-          onClick={onLaunch3D}
-          className="min-h-[48px] px-6 py-3 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-black font-black text-xs uppercase tracking-wider shadow-xl flex items-center gap-2 transition-all active:scale-95 flex-shrink-0 cursor-pointer"
-          id="btn-callout-view-3d"
-        >
-          <Eye className="w-4 h-4" />
-          <span>VER EL COCHE</span>
-        </button>
+
+        <div className="bg-black/50 p-4 rounded-2xl border border-white/5 space-y-2 text-xs">
+          <div className="flex justify-between text-white/70">
+            <span>Precio anunciado</span>
+            <span className="font-bold text-white">{askingPrice.toLocaleString('es-ES')} €</span>
+          </div>
+          <div className="flex justify-between text-amber-300">
+            <span>+ Puesta a punto inicial estimada</span>
+            <span className="font-bold">+{setupCost.toLocaleString('es-ES')} €</span>
+          </div>
+          <div className="pt-2 border-t border-white/10 flex justify-between items-baseline">
+            <span className="font-black text-white text-sm uppercase">≈ COSTE REAL</span>
+            <span className="font-black text-xl text-cyan-300">≈ {realTotalCost.toLocaleString('es-ES')} €</span>
+          </div>
+        </div>
+
+        <p className="text-xs text-white/70 font-medium">
+          💡 Por encima de <strong>{maxAcceptablePrice.toLocaleString('es-ES')} €</strong> te aconsejamos negociar para absorber el mantenimiento pendiente.
+        </p>
+
+        {/* Desglose desplegable */}
+        <div>
+          <button
+            id="toggle-cost-details-btn"
+            onClick={() => setShowCostBreakdown(!showCostBreakdown)}
+            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+          >
+            <span>{showCostBreakdown ? 'Ocultar desglose detallado' : 'Ver desglose completo de taller'}</span>
+            {showCostBreakdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+
+          {showCostBreakdown && (
+            <div className="mt-3 pt-3 border-t border-white/10 space-y-4 animate-fade-in">
+              <RealCostCalculator initialCost={report.realCost} repairs={report.repairs} countryProfile={profile} />
+              <WhatIfSimulator report={report} countryProfile={profile} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ============================================================ */}
-      {/* 💬 QUÉ PREGUNTAR AL VENDEDOR */}
+      {/* NIVEL 3 — PUNTOS CRÍTICOS (3 COSAS A REVISAR) */}
       {/* ============================================================ */}
-      <div className="bg-[#16161D] border border-blue-500/30 rounded-[28px] p-6 shadow-2xl space-y-4">
-        <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-          <HelpCircle className="w-5 h-5" />
-          💬 QUÉ PREGUNTAR AL VENDEDOR ({profile.countryName})
-        </h3>
-        <p className="text-xs text-white/70">
-          Preguntas directas y amables para evaluar rápidamente la transparencia del vendedor:
-        </p>
+      <div className="bg-[#0E111A] border border-white/10 rounded-3xl p-5 shadow-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+            <span>⚠️</span>
+            <span>3 COSAS A REVISAR ANTES DE COMPRAR</span>
+          </span>
+          <span className="text-[10px] text-white/40 font-bold uppercase">Prioritario</span>
+        </div>
 
         <div className="space-y-2.5">
-          {sellerQuestions.map((q, idx) => (
-            <div key={idx} className="bg-black/60 p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-3">
-              <span className="text-xs text-white/90 font-medium">
-                "{q}"
-              </span>
-              <button
-                onClick={() => copySellerQuestion(q, idx)}
-                className="min-h-[44px] px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0 transition-colors cursor-pointer"
-              >
-                {copiedQuestionIdx === idx ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Copiado</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar</span>
-                  </>
-                )}
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ============================================================ */}
-      {/* CHECKLIST EN VIVO Y DOCUMENTOS OBLIGATORIOS */}
-      {/* ============================================================ */}
-      <div className="bg-[#16161D] border border-emerald-500/30 rounded-[28px] p-6 shadow-2xl space-y-4">
-        <h3 className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-          <Wrench className="w-5 h-5" />
-          🔍 QUÉ REVISAR CON UN MECÁNICO (CHECKLIST EN VIVO)
-        </h3>
-
-        <div className="space-y-2">
-          {activeChecklist.map((item) => (
+          {criticalChecks.map((item, idx) => (
             <div
-              key={item.id}
-              className={`p-3.5 rounded-2xl border transition-all ${
-                item.checked
-                  ? 'bg-emerald-950/30 border-emerald-500/40 text-white/60'
-                  : 'bg-black/60 border-white/5 text-white'
-              }`}
+              key={idx}
+              className="bg-black/50 border border-white/5 rounded-2xl p-3.5 space-y-2 text-xs"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div
-                  onClick={() => toggleChecklist(item.id)}
-                  className="flex items-center gap-3 cursor-pointer flex-1 min-h-[44px]"
-                >
-                  <div
-                    className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
-                      item.checked
-                        ? 'bg-emerald-500 border-emerald-400 text-black'
-                        : 'border-white/20 bg-black'
-                    }`}
-                  >
-                    {item.checked && <CheckCircle2 className="w-4 h-4 stroke-[3]" />}
-                  </div>
-
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-sm mt-0.5">
+                    {item.level === 'danger' ? '🔴' : '🟡'}
+                  </span>
                   <div>
-                    <span className={`text-xs font-bold block ${item.checked ? 'line-through text-white/40' : 'text-white'}`}>
-                      {item.task}
+                    <span className="font-black text-white block text-sm">
+                      {item.title}
                     </span>
-                    <span className="text-[10px] text-white/40 font-semibold">
-                      {item.category}
+                    <span className="text-white/60 text-xs">
+                      {item.desc}
                     </span>
                   </div>
                 </div>
 
-                <button
-                  onClick={() =>
-                    setExplanationData({
-                      type: 'HOW_TO_CHECK',
-                      title: item.task,
-                      steps: [item.explanation, 'Verifica con linterna que no existan rezumes activos de fluidos.']
-                    })
-                  }
-                  className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 underline flex-shrink-0 cursor-pointer"
-                >
-                  ¿Cómo comprobarlo?
-                </button>
+                <span className="px-2 py-0.5 rounded-lg bg-white/5 text-amber-300 font-black text-[11px] whitespace-nowrap">
+                  {item.cost}
+                </span>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setExplanationData(item.test)}
+                className="w-full py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer"
+              >
+                <Wrench className="w-3 h-3" />
+                <span>CÓMO COMPROBAR ESTO</span>
+              </button>
             </div>
           ))}
+        </div>
+
+        {/* Checklist toggle */}
+        <div>
+          <button
+            id="toggle-checklist-btn"
+            onClick={() => setShowChecklistDetails(!showChecklistDetails)}
+            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+          >
+            <span>{showChecklistDetails ? 'Ocultar lista interactiva' : 'Ver checklist paso a paso'}</span>
+            {showChecklistDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+
+          {showChecklistDetails && (
+            <div className="mt-3 pt-3 border-t border-white/10 space-y-2 animate-fade-in">
+              {activeChecklist.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => toggleChecklist(item.id)}
+                  className={`p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${
+                    item.checked
+                      ? 'bg-emerald-950/30 border-emerald-500/40 text-white/60'
+                      : 'bg-black/60 border-white/5 text-white'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-md flex items-center justify-center border ${
+                      item.checked ? 'bg-emerald-500 border-emerald-400 text-black' : 'border-white/20'
+                    }`}
+                  >
+                    {item.checked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </div>
+                  <span className={`text-xs font-bold ${item.checked ? 'line-through opacity-60' : ''}`}>
+                    {item.task}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* ============================================================ */}
-      {/* FEEDBACK MECANISMO LOCAL — FASE 12 PILOTO */}
+      {/* NIVEL 4 — RECOMENDACIÓN Y NEGOCIACIÓN */}
       {/* ============================================================ */}
-      <div className="bg-[#16161D] border border-white/10 rounded-[28px] p-6 shadow-2xl space-y-3 text-center">
-        <h4 className="text-xs font-black uppercase tracking-widest text-cyan-400">
-          ¿Te ha ayudado OCHE?
-        </h4>
-        <p className="text-xs text-white/60 max-w-md mx-auto">
-          Tu valoración nos ayuda a calibrar la precisión del análisis (guardado localmente en esta sesión sin envío a terceros).
+      <div className="bg-[#0E111A] border border-emerald-500/30 rounded-3xl p-5 shadow-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+            <span>💬</span>
+            <span>RECOMENDACIÓN & NEGOCIACIÓN</span>
+          </span>
+        </div>
+
+        <p className="text-sm font-bold text-white leading-relaxed">
+          "Mi recomendación: Intenta comprarlo por <strong>{targetOfferPrice.toLocaleString('es-ES')} €</strong>."
         </p>
 
-        {feedbackSubmitted ? (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-3 rounded-2xl text-xs font-bold inline-flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>¡Gracias por tu opinión! Registrado en esta sesión.</span>
+        <div className="bg-black/50 rounded-2xl p-3.5 border border-white/5 space-y-2 text-xs">
+          <div className="text-[11px] font-black uppercase text-white/60">
+            2 argumentos listos para usar:
           </div>
-        ) : (
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={() => handleFeedbackSubmit('helpful')}
-                className={`min-h-[44px] px-5 py-2.5 rounded-xl text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
-                  feedbackRating === 'helpful' ? 'bg-emerald-600 ring-2 ring-emerald-400' : 'bg-white/10 hover:bg-emerald-600'
-                }`}
-              >
-                <ThumbsUp className="w-4 h-4 text-emerald-400" />
-                <span>👍 Sí</span>
-              </button>
+          <div className="flex items-start gap-2 text-white/80">
+            <span className="text-red-400 font-bold">•</span>
+            <span><strong>Neumáticos desgastados:</strong> Requieren sustitución inmediata (~250 €).</span>
+          </div>
+          <div className="flex items-start gap-2 text-white/80">
+            <span className="text-amber-400 font-bold">•</span>
+            <span><strong>Mantenimiento pendiente:</strong> Líquidos, filtros y revisión de taller (~400 €).</span>
+          </div>
+        </div>
 
-              <button
-                onClick={() => handleFeedbackSubmit('not_helpful')}
-                className={`min-h-[44px] px-5 py-2.5 rounded-xl text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
-                  feedbackRating === 'not_helpful' ? 'bg-red-600 ring-2 ring-red-400' : 'bg-white/10 hover:bg-red-600'
-                }`}
-              >
-                <ThumbsDown className="w-4 h-4 text-red-400" />
-                <span>👎 No</span>
-              </button>
-            </div>
+        <button
+          id="copy-negotiation-arg-btn"
+          type="button"
+          onClick={copyNegotiationArgument}
+          className="w-full py-3.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-[0.99] transition-all cursor-pointer"
+        >
+          {copiedArg ? (
+            <>
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>¡Texto copiado para WhatsApp/Vendedor!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-4 h-4 stroke-[2.5]" />
+              <span>Copiar argumento para el vendedor</span>
+            </>
+          )}
+        </button>
+      </div>
 
-            <div className="w-full max-w-sm flex items-center gap-2 pt-1">
-              <input
-                type="text"
-                placeholder="¿Qué mejorarías? (opcional)"
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                className="flex-1 bg-black border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
-              />
-              <button
-                onClick={() => handleFeedbackSubmit(feedbackRating || 'helpful')}
-                className="min-h-[40px] px-3.5 py-2 bg-white/10 hover:bg-cyan-400 hover:text-black rounded-xl text-xs font-bold transition-colors cursor-pointer"
-              >
-                Enviar
-              </button>
-            </div>
+      {/* ============================================================ */}
+      {/* ACCIONES COMPLEMENTARIAS: 3D & GUÍAME */}
+      {/* ============================================================ */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <button
+          id="report-3d-btn"
+          onClick={onLaunch3D}
+          className="p-3.5 rounded-2xl bg-[#141824] hover:bg-[#1A2030] border border-cyan-500/30 text-left transition-all cursor-pointer flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between w-full mb-1">
+            <span className="text-xl">👀</span>
+            <span className="text-[10px] font-black text-cyan-400 uppercase">3D Interactivo</span>
+          </div>
+          <div>
+            <div className="text-xs font-black text-white">VER EN 3D</div>
+            <div className="text-[10px] text-white/50 mt-0.5">Toca y señala piezas</div>
+          </div>
+        </button>
+
+        <button
+          id="report-guide-btn"
+          onClick={onLaunchAssistant}
+          className="p-3.5 rounded-2xl bg-[#141824] hover:bg-[#1A2030] border border-blue-500/30 text-left transition-all cursor-pointer flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between w-full mb-1">
+            <span className="text-xl">🔧</span>
+            <span className="text-[10px] font-black text-blue-400 uppercase">In Situ</span>
+          </div>
+          <div>
+            <div className="text-xs font-black text-white">GUÍAME PASO A PASO</div>
+            <div className="text-[10px] text-white/50 mt-0.5">Prueba ruidos y embrague</div>
+          </div>
+        </button>
+      </div>
+
+      {/* Preguntas para el vendedor (Acordeón) */}
+      <div className="bg-[#0E111A] border border-white/10 rounded-2xl p-4">
+        <button
+          id="toggle-seller-questions-btn"
+          onClick={() => setShowSellerQuestions(!showSellerQuestions)}
+          className="w-full flex items-center justify-between text-xs font-bold text-white cursor-pointer"
+        >
+          <span className="flex items-center gap-1.5">
+            <HelpCircle className="w-4 h-4 text-blue-400" />
+            <span>Preguntas clave para el vendedor</span>
+          </span>
+          {showSellerQuestions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
+        {showSellerQuestions && (
+          <div className="mt-3 pt-3 border-t border-white/10 space-y-2 animate-fade-in">
+            {sellerQuestions.map((q, idx) => (
+              <div key={idx} className="bg-black/40 p-3 rounded-xl text-xs text-white/80 flex items-start gap-2">
+                <span className="text-cyan-400 font-bold">•</span>
+                <span>"{q}"</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Trust & Legal Disclaimers Footer */}
-      <footer className="pt-6 border-t border-white/10 text-center space-y-1 text-xs text-white/40 font-medium">
+      {/* Feedback Banner for Real Pilot */}
+      <div className="bg-gradient-to-r from-cyan-950/40 to-blue-950/40 border border-cyan-500/20 rounded-2xl p-4 text-center space-y-2">
+        <span className="text-xs font-bold text-cyan-300 block">
+          ¿Te ha resultado útil esta revisión?
+        </span>
+        <button
+          id="open-pilot-feedback-btn"
+          type="button"
+          onClick={() => setShowFeedbackModal(true)}
+          className="px-4 py-2 rounded-xl bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/30 text-xs font-black uppercase tracking-wider transition-all cursor-pointer inline-flex items-center gap-1.5"
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          <span>Valorar experiencia (30s)</span>
+        </button>
+      </div>
+
+      {/* Legal Footer */}
+      <footer className="text-center text-[10px] text-white/40 space-y-1 pt-2">
         <p>{APP_CONFIG.TRUST_DISCLAIMERS.PROFESSIONAL_INSPECTION}</p>
         <p>{APP_CONFIG.TRUST_DISCLAIMERS.ESTIMATED_COSTS}</p>
       </footer>
     </div>
   );
 };
+

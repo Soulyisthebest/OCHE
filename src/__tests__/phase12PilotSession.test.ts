@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AnalyticsService, PilotSessionState } from '../services/AnalyticsService';
+import { PilotSessionService } from '../services/PilotSessionService';
+import { PilotUserFeedback } from '../types/pilotSession';
 
 describe('OCHE — PHASE 12: REAL USER PILOT SESSION TRACKING', () => {
   beforeEach(() => {
     AnalyticsService.clearEvents();
     AnalyticsService.startPilotSession();
+    PilotSessionService.clearAllSessions();
+    PilotSessionService.startSession(true);
   });
 
   it('1. Initializes clean pilot session with required structure and timestamps', () => {
@@ -80,4 +84,46 @@ describe('OCHE — PHASE 12: REAL USER PILOT SESSION TRACKING', () => {
     expect(newSession.vehicleIdentified).toBeNull();
     expect(newSession.feedbackSubmitted).toBeNull();
   });
+
+  it('4. PilotSessionService records immutable snapshot and aggregated metrics', () => {
+    // Record photos & step
+    PilotSessionService.recordPhotoTaken('mission_front', true);
+    PilotSessionService.recordPhotoTaken('mission_wheels', false, true);
+    PilotSessionService.recordStepCompletion('mission_front', 'Frontal y Matrícula', 'COMPLETED', 4500, 0);
+
+    // Seal immutable snapshot
+    PilotSessionService.finalizeInspection({
+      score: 82,
+      confidence: 0.9,
+      verdict: 'COMPRAR',
+      realCostCalculated: 10450,
+      negotiationTargetPrice: 9400,
+      topRisksIdentified: ['Neumáticos delanteros desgastados'],
+      hasProfessionalEscalation: false
+    });
+
+    // Record User feedback
+    const feedback: PilotUserFeedback = {
+      easeOfUseRating: 5,
+      understandChecksRating: 4,
+      confidenceRating: 5,
+      wouldUseAgain: 'YES',
+      mostUsefulFeature: 'helped_negotiate',
+      whatWasMostUseful: 'El argumento para negociar con el vendedor',
+      submittedAt: new Date().toISOString()
+    };
+    PilotSessionService.recordUserFeedback(feedback);
+
+    const metrics = PilotSessionService.getAggregatedMetrics();
+    expect(metrics.totalSessions).toBe(1);
+    expect(metrics.completedSessions).toBe(1);
+    expect(metrics.completionRate).toBe(100);
+    expect(metrics.avgEaseRating).toBe(5);
+
+    // Export dataset as JSON
+    const exportedJSON = PilotSessionService.exportPilotDatasetAsJSON();
+    expect(exportedJSON).toContain('pilot_');
+    expect(exportedJSON).toContain('helped_negotiate');
+  });
 });
+

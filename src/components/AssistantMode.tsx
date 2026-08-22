@@ -1,140 +1,183 @@
 import React, { useState } from 'react';
-import { ShieldCheck, ChevronRight, ChevronLeft, AlertTriangle, CheckCircle2, RotateCcw, Volume2, Flame, Wrench } from 'lucide-react';
-import { AssistantStep } from '../types';
+import {
+  Wrench, CheckCircle2, AlertTriangle, XCircle, ChevronRight,
+  ChevronLeft, RotateCcw, Volume2, Flame, ShieldAlert, Sparkles, Check
+} from 'lucide-react';
 
-const ASSISTANT_STEPS: AssistantStep[] = [
+interface InspectionStep {
+  id: number;
+  title: string;
+  category: string;
+  iconEmoji: string;
+  instruction: string;
+  testAction?: {
+    label: string;
+    steps: string[];
+  };
+  options: {
+    label: string;
+    status: 'good' | 'warning' | 'danger';
+    advice: string;
+    estimatedCost?: string;
+  }[];
+}
+
+const IN_SITU_STEPS: InspectionStep[] = [
   {
     id: 1,
-    title: 'Comprobación del Motor en Frío',
-    zone: 'Vano Motor',
-    instruction: 'Pide al vendedor tocar con cuidado la tapa del motor o el tubo de escape para verificar que no lo ha arrancado justo antes de que llegaras.',
-    question: '¿El motor está totalmente frío?',
+    title: 'Comprobar motor en frío',
+    category: 'Vano Motor',
+    iconEmoji: '❄️',
+    instruction: 'Toca el capó con la mano antes de arrancar. Debe estar totalmente frío.',
+    testAction: {
+      label: '¿Por qué es importante?',
+      steps: [
+        'Muchos vendedores calientan el motor antes para ocultar humo de arranque o ruidos de cadena.',
+        'Si está caliente, pide esperar 20 minutos o probarlo en frío.'
+      ]
+    },
     options: [
       {
-        label: 'SÍ, está frío',
-        type: 'yes',
-        advice: '✅ Excelente. Arrancar en frío es la mejor prueba para detectar traqueteos de cadena, humo o fallos de inyección.',
-        riskLevel: 'low'
+        label: '🟢 Está frío (Normal)',
+        status: 'good',
+        advice: 'Perfecto. Podrás comprobar si la cadena suena o echa humo al arrancar.'
       },
       {
-        label: 'NO, está caliente',
-        type: 'no',
-        advice: '⚠️ Precaución: Algunos vendedores calientan el coche antes para ocultar ruidos de arranque en frío o humo inicial. Pide volver a probarlo tras enfriar.',
-        riskLevel: 'medium'
-      },
-      {
-        label: 'NO ESTOY SEGURO',
-        type: 'unsure',
-        advice: '💡 Pon la mano sobre el capó. Si despide calor, el coche ha estado encendido recientemente.',
-        riskLevel: 'low'
+        label: '🟡 Está caliente (Sospechoso)',
+        status: 'warning',
+        advice: 'Atención: Arrancar en caliente disimula fallos de inyectores o taqués.',
+        estimatedCost: 'Revisión en taller: 50 €'
       }
     ]
   },
   {
     id: 2,
-    title: 'Arranque y Sonido del Ralentí',
-    zone: 'Sonido y Vibraciones',
-    instruction: 'Arranca el motor (o pide al vendedor que lo haga) con la puerta abierta y la ventana bajada. Escucha atentamente durante 15 segundos.',
-    question: '¿Escuchas un ruido metálico metálico, chirrido agudo o traqueteo?',
+    title: 'Sonido al arrancar y ralentí',
+    category: 'Sonido y Distribución',
+    iconEmoji: '👂',
+    instruction: 'Abre la puerta, arranca el motor y escucha durante 15 segundos con atención.',
+    testAction: {
+      label: 'Prueba auditiva:',
+      steps: [
+        '1. Gira la llave o pulsa arranque con la ventana bajada.',
+        '2. Escucha si suena un "cla-cla-cla" metálico durante los primeros 3 segundos.',
+        '3. Comprueba si el ralentí oscila o vibra el volante.'
+      ]
+    },
     options: [
       {
-        label: 'NO, suena suave y redondo',
-        type: 'no',
-        advice: '🟢 Muy buena señal. El ralentí es estable y no hay ruidos sospechosos en la distribución.',
-        riskLevel: 'low'
+        label: '🟢 Suave y estable (Bien)',
+        status: 'good',
+        advice: 'El motor suena redondo y sin holguras aparentes en la distribución.'
       },
       {
-        label: 'SÍ, un ruido metálico o chirrido',
-        type: 'yes',
-        advice: '⚠️ Esto puede indicar un problema en la cadena de distribución, tensor o polea del alternador. No significa que esté roto, pero exige revisión técnica.',
-        riskLevel: 'high'
+        label: '🟡 Chirrido o silbido agudo',
+        status: 'warning',
+        advice: 'Probable correa auxiliar o polea del alternador desgastada.',
+        estimatedCost: '80–200 €'
       },
       {
-        label: 'NO ESTOY SEGURO',
-        type: 'unsure',
-        advice: '💡 Pide acelerar levemente hasta 1.500 rpm. Si el ruido aumenta de ritmo, anótalo para el mecánico.',
-        riskLevel: 'medium'
+        label: '🔴 Traqueteo metálico fuerte',
+        status: 'danger',
+        advice: 'Posible holgura de cadena de distribución o taqués hidráulicos.',
+        estimatedCost: '600–1.400 €'
       }
     ]
   },
   {
     id: 3,
-    title: 'Humo del Tubo de Escape',
-    zone: 'Escape',
-    instruction: 'Mientras alguien acelera levemente a 2.000 rpm en parado, observa la salida del tubo de escape.',
-    question: '¿Sale un humo denso de color AZUL o NEGRO espeso?',
+    title: 'Prueba del pedal de embrague',
+    category: 'Caja y Transmisión',
+    iconEmoji: '🦶',
+    instruction: 'Esto NO se puede ver en una foto. Haz esta prueba física en parado:',
+    testAction: {
+      label: 'Cómo probar el embrague en 10 segundos:',
+      steps: [
+        '1. Freno de mano bien puesto.',
+        '2. Mete 3ª marcha (no primera).',
+        '3. Acelera suavemente a 1.500 rpm.',
+        '4. Suelta el pedal del embrague poco a poco.'
+      ]
+    },
     options: [
       {
-        label: 'NO, apenas humo o vapor transparente',
-        type: 'no',
-        advice: '🟢 Correcto. La combustión y el consumo de aceite parecen estar en orden.',
-        riskLevel: 'low'
+        label: '🟢 El motor se cala de golpe (Normal)',
+        status: 'good',
+        advice: 'El disco de embrague muerde con fuerza. El desgaste es correcto.'
       },
       {
-        label: 'SÍ, humo azul o negro denso',
-        type: 'yes',
-        advice: '🔴 ALTO RIESGO: El humo azul indica consumo de aceite por retenes/turbo. El humo negro es exceso de combustible o inyectores sucios.',
-        riskLevel: 'high'
+        label: '🔴 El motor sube de vueltas sin calarse (Patina)',
+        status: 'danger',
+        advice: 'El embrague está al final de su vida útil y patina bajo carga.',
+        estimatedCost: '500–900 €'
       },
       {
-        label: 'NO ESTOY SEGURO',
-        type: 'unsure',
-        advice: '💡 Un humo blanco muy ligero en días fríos es solo condensación. El peligro es el humo azulado que huele a aceite quemado.',
-        riskLevel: 'medium'
+        label: '🟡 Pedal muy duro o vibra el pie',
+        status: 'warning',
+        advice: 'Maza de embrague o volante bimasa con fatiga.',
+        estimatedCost: '400–800 €'
       }
     ]
   },
   {
     id: 4,
-    title: 'Prueba del Pedal de Embrague',
-    zone: 'Transmisión',
-    instruction: 'Con el motor en marcha y el freno de mano echado, mete 3ª marcha e intenta soltar el embrague despacio.',
-    question: '¿El motor se cala inmediatamente o el embrague patina?',
+    title: 'Humo del tubo de escape',
+    category: 'Gases y Combustión',
+    iconEmoji: '💨',
+    instruction: 'Pide que aceleren levemente en punto muerto y mira el escape.',
+    testAction: {
+      label: 'Qué buscar en el color del humo:',
+      steps: [
+        '• Blanco tenue en frío: Solo vapor de agua (normal).',
+        '• Azulado con olor a quemado: Consumo de aceite por motor o turbo.',
+        '• Negro denso: Mala combustión o inyectores sucios.'
+      ]
+    },
     options: [
       {
-        label: 'Se cala de golpe (Normal)',
-        type: 'no',
-        advice: '🟢 Perfecto. Significa que el disco de embrague aún tiene buen agarre y fuerza de fricción.',
-        riskLevel: 'low'
+        label: '🟢 Sin humo o vapor transparente (Bien)',
+        status: 'good',
+        advice: 'Combustión limpia y sin consumo anómalo visible de aceite.'
       },
       {
-        label: 'El motor no se cala / sube de vueltas (Patina)',
-        type: 'yes',
-        advice: '🔴 El embrague está en el límite de su vida útil. Requerirá sustitución inminente (entre 500 € y 900 €).',
-        riskLevel: 'high'
+        label: '🟡 Humo negro al acelerar',
+        status: 'warning',
+        advice: 'Inyección sucia o filtro de partículas saturado.',
+        estimatedCost: '150–400 €'
       },
       {
-        label: 'NO ESTOY SEGURO',
-        type: 'unsure',
-        advice: '💡 Si al pisar el pedal sientes una vibración fuerte en el pie, el bimasa puede tener desgaste.',
-        riskLevel: 'medium'
+        label: '🔴 Humo azulado persistente',
+        status: 'danger',
+        advice: 'Aceite entrando en los cilindros (segmentos, guías o turbo).',
+        estimatedCost: '800–2.000 €'
       }
     ]
   },
   {
     id: 5,
-    title: 'Comprobación de Aceite e Inspección Visual',
-    zone: 'Mantenimiento',
-    instruction: 'Con el motor apagado, saca la varilla del aceite y mira el reverso del tapón del aceite.',
-    question: '¿Hay una pasta blanquecina estilo "mayonesa" bajo el tapón?',
+    title: 'Revisión del tapón del aceite',
+    category: 'Circuito de Refrigeración',
+    iconEmoji: '🧪',
+    instruction: 'Con el motor apagado, desenrosca el tapón de llenado de aceite y mira la base.',
+    testAction: {
+      label: 'Comprobación visual rápida:',
+      steps: [
+        '1. Mira el reverso de la rosca del tapón.',
+        '2. ¿Ves aceite normal marrón/negro?',
+        '3. ¿O hay una pasta espesa amarillenta parecida a mayonesa?'
+      ]
+    },
     options: [
       {
-        label: 'NO, está limpio / solo aceite',
-        type: 'no',
-        advice: '🟢 Sin signos de mezcla de junta de culata.',
-        riskLevel: 'low'
+        label: '🟢 Solo aceite limpio / negro (Correcto)',
+        status: 'good',
+        advice: 'Sin indicios de mezcla entre anticongelante y aceite.'
       },
       {
-        label: 'SÍ, hay una pasta cremosa blanquecina',
-        type: 'yes',
-        advice: '🔴 RIESGO EXTREMO: Indica mezcla de refrigerante con aceite (Junta de culata dañada). Desaconsejamos la compra sin prueba de presión.',
-        riskLevel: 'high'
-      },
-      {
-        label: 'NO ESTOY SEGURO',
-        type: 'unsure',
-        advice: '💡 En trayectos extremadamente cortos de invierno puede formarse un poso leve de condensación, pero si es abundante es junta de culata.',
-        riskLevel: 'high'
+        label: '🔴 Pasta blanquecina o "mayonesa"',
+        status: 'danger',
+        advice: 'Anticongelante mezclándose con aceite (posible junta de culata dañada). Desaconsejamos la compra sin prueba de presión.',
+        estimatedCost: '900–1.800 €'
       }
     ]
   }
@@ -145,11 +188,12 @@ interface AssistantModeProps {
 }
 
 export const AssistantMode: React.FC<AssistantModeProps> = ({ onFinish }) => {
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+  const [currentStepIdx, setCurrentStepIdx] = useState<number>(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [showSummary, setShowSummary] = useState<boolean>(false);
 
-  const currentStep = ASSISTANT_STEPS[currentStepIndex];
-  const selectedOptionIdx = answers[currentStep.id];
+  const currentStep = IN_SITU_STEPS[currentStepIdx];
+  const selectedOptIdx = answers[currentStep?.id];
 
   const handleSelectOption = (optIdx: number) => {
     setAnswers((prev) => ({
@@ -158,152 +202,242 @@ export const AssistantMode: React.FC<AssistantModeProps> = ({ onFinish }) => {
     }));
   };
 
-  const handleReset = () => {
-    setAnswers({});
-    setCurrentStepIndex(0);
+  const handleNext = () => {
+    if (currentStepIdx < IN_SITU_STEPS.length - 1) {
+      setCurrentStepIdx((prev) => prev + 1);
+    } else {
+      setShowSummary(true);
+    }
   };
 
-  const highRiskCount = Object.entries(answers).filter(([stepId, optIdx]) => {
-    const step = ASSISTANT_STEPS.find((s) => s.id === Number(stepId));
-    const idx = Number(optIdx);
-    return step?.options[idx]?.riskLevel === 'high';
-  }).length;
+  const handleReset = () => {
+    setAnswers({});
+    setCurrentStepIdx(0);
+    setShowSummary(false);
+  };
+
+  // Compute final in-situ verdict
+  const totalAnswered = Object.keys(answers).length;
+  const dangerCount = Object.entries(answers).filter(
+    ([stepId, optIdx]) => IN_SITU_STEPS.find((s) => s.id === Number(stepId))?.options[Number(optIdx)]?.status === 'danger'
+  ).length;
+  const warningCount = Object.entries(answers).filter(
+    ([stepId, optIdx]) => IN_SITU_STEPS.find((s) => s.id === Number(stepId))?.options[Number(optIdx)]?.status === 'warning'
+  ).length;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#0A0A0C] text-white p-4 sm:p-6 max-w-2xl mx-auto flex flex-col justify-between">
-      {/* Header */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-xs font-black text-emerald-400 uppercase tracking-widest">
-            <ShieldCheck className="w-4 h-4" />
-            <span>MODO ASISTENTE IN SITU</span>
-          </div>
+    <div className="min-h-[calc(100vh-4.5rem)] bg-[#07090E] text-white p-4 sm:p-6 max-w-lg mx-auto flex flex-col justify-between pb-24 sm:pb-8">
+      {!showSummary ? (
+        <>
+          {/* Top Progress */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <button
+                id="assistant-back-btn"
+                onClick={onFinish}
+                className="text-xs font-bold text-white/60 hover:text-white flex items-center gap-1 bg-[#121622] px-3 py-1.5 rounded-full border border-white/10 cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Salir</span>
+              </button>
 
-          <button
-            onClick={handleReset}
-            className="text-xs font-black text-white/50 hover:text-white uppercase tracking-wider flex items-center gap-1 cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reiniciar
-          </button>
-        </div>
-
-        <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-1">
-          🧑‍🔧 No sé qué mirar
-        </h1>
-        <p className="text-xs text-white/50 font-bold uppercase tracking-wider mb-6">
-          Te guiamos paso a paso delante del coche para comprobar los puntos clave de seguridad.
-        </p>
-
-        {/* Progress Bar */}
-        <div className="w-full bg-[#16161D] rounded-full h-2 mb-6 border border-white/10 overflow-hidden">
-          <div
-            className="bg-emerald-500 h-full transition-all duration-300"
-            style={{ width: `${((currentStepIndex + 1) / ASSISTANT_STEPS.length) * 100}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Interactive Step Card */}
-      <div className="bg-[#16161D] border border-white/10 rounded-[32px] p-6 shadow-2xl relative flex-1 flex flex-col justify-between my-2">
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
-              PASO {currentStepIndex + 1} DE {ASSISTANT_STEPS.length} • {currentStep.zone}
-            </span>
-            {highRiskCount > 0 && (
-              <span className="text-[10px] font-black text-red-400 bg-red-500/20 px-3 py-1 rounded-full border border-red-500/30 uppercase">
-                ⚠️ {highRiskCount} RIESGOS DETECTADOS
+              <span className="text-xs font-black uppercase tracking-wider text-cyan-400">
+                GUÍAME • PASO {currentStepIdx + 1}/{IN_SITU_STEPS.length}
               </span>
+
+              <span className="text-xs text-white/50">
+                {totalAnswered} comprobados
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-[#141824] h-1.5 rounded-full overflow-hidden mb-5">
+              <div
+                className="bg-gradient-to-r from-cyan-400 to-blue-500 h-full transition-all duration-300 rounded-full"
+                style={{
+                  width: `${((currentStepIdx + 1) / IN_SITU_STEPS.length) * 100}%`
+                }}
+              />
+            </div>
+
+            {/* Step Header */}
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-cyan-300 text-[10px] font-black uppercase tracking-wider mb-2">
+                <span>{currentStep.category}</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-3xl">{currentStep.iconEmoji}</span>
+                <h2 className="text-xl sm:text-2xl font-black text-white leading-tight">
+                  {currentStep.title}
+                </h2>
+              </div>
+              <p className="text-sm text-white/80 font-medium mt-1.5">
+                {currentStep.instruction}
+              </p>
+            </div>
+
+            {/* Test Action Box */}
+            {currentStep.testAction && (
+              <div className="bg-[#101420] border border-cyan-500/20 rounded-2xl p-4 mb-4 space-y-2">
+                <div className="text-xs font-black text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Wrench className="w-3.5 h-3.5" />
+                  <span>{currentStep.testAction.label}</span>
+                </div>
+                <div className="space-y-1.5 text-xs text-white/80">
+                  {currentStep.testAction.steps.map((s, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <span className="text-cyan-400 font-bold">•</span>
+                      <span>{s}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
+
+            {/* Options Selector */}
+            <div className="space-y-2.5 mb-4">
+              <div className="text-xs font-bold text-white/50 uppercase tracking-wider">
+                ¿Qué has observado?
+              </div>
+              {currentStep.options.map((opt, idx) => {
+                const isSelected = selectedOptIdx === idx;
+                return (
+                  <button
+                    key={idx}
+                    id={`assistant-opt-${currentStep.id}-${idx}`}
+                    onClick={() => handleSelectOption(idx)}
+                    className={`w-full p-3.5 rounded-2xl text-left transition-all border cursor-pointer ${
+                      isSelected
+                        ? opt.status === 'good'
+                          ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-lg shadow-emerald-500/10'
+                          : opt.status === 'warning'
+                          ? 'bg-amber-500/20 border-amber-400 text-white shadow-lg shadow-amber-500/10'
+                          : 'bg-red-500/20 border-red-400 text-white shadow-lg shadow-red-500/10'
+                        : 'bg-[#11141E] border-white/10 hover:border-white/20 text-white/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm">{opt.label}</span>
+                      {isSelected && <Check className="w-4 h-4 text-cyan-300 stroke-[3]" />}
+                    </div>
+                    {isSelected && (
+                      <div className="mt-2 pt-2 border-t border-white/10 text-xs text-white/90">
+                        <p>{opt.advice}</p>
+                        {opt.estimatedCost && (
+                          <p className="mt-1 text-amber-300 font-bold">
+                            💰 Coste estimado de reparación: {opt.estimatedCost}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <h2 className="text-xl font-black text-white uppercase italic tracking-tighter mb-3">
-            {currentStep.title}
-          </h2>
+          {/* Navigation Controls */}
+          <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-3">
+            <button
+              id="assistant-prev-btn"
+              disabled={currentStepIdx === 0}
+              onClick={() => setCurrentStepIdx((prev) => Math.max(0, prev - 1))}
+              className="py-3 px-4 rounded-xl bg-[#121622] text-white/70 hover:text-white text-xs font-bold disabled:opacity-30 cursor-pointer"
+            >
+              ← Anterior
+            </button>
 
-          {/* Action Instruction Box */}
-          <div className="bg-black p-4 rounded-2xl border border-white/10 mb-5 flex items-start gap-3">
-            <Wrench className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-white/80 leading-relaxed font-bold">
-              {currentStep.instruction}
+            <button
+              id="assistant-next-btn"
+              disabled={selectedOptIdx === undefined}
+              onClick={handleNext}
+              className="py-3 px-6 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <span>{currentStepIdx === IN_SITU_STEPS.length - 1 ? 'Ver Veredicto Final' : 'Siguiente'}</span>
+              <ChevronRight className="w-4 h-4 stroke-[3]" />
+            </button>
+          </div>
+        </>
+      ) : (
+        /* Summary Screen at the end of Guided Inspection */
+        <div className="space-y-5 my-auto">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-3xl mx-auto mb-3">
+              {dangerCount > 0 ? '⚠️' : warningCount > 0 ? '🟡' : '🟢'}
+            </div>
+            <h2 className="text-2xl font-black text-white">
+              Inspección In Situ Completada
+            </h2>
+            <p className="text-xs text-white/60 mt-1">
+              Has revisado los 5 puntos mecánicos críticos del coche.
             </p>
           </div>
 
-          {/* Question */}
-          <p className="text-sm font-black text-blue-400 uppercase tracking-wider mb-4">
-            {currentStep.question}
-          </p>
+          {/* Verdict Box */}
+          <div className={`p-4 rounded-2xl border ${
+            dangerCount > 0
+              ? 'bg-red-500/15 border-red-500/40 text-red-100'
+              : warningCount > 0
+              ? 'bg-amber-500/15 border-amber-500/40 text-amber-100'
+              : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-100'
+          }`}>
+            <div className="text-xs font-black uppercase tracking-wider">
+              {dangerCount > 0
+                ? '🔴 ALTO RIESGO DETECTADO'
+                : warningCount > 0
+                ? '🟡 RECOMENDACIÓN: NEGOCIAR REBAJA'
+                : '🟢 COCHE EN BUEN ESTADO APARENTE'}
+            </div>
+            <p className="text-xs mt-1.5 leading-relaxed font-medium">
+              {dangerCount > 0
+                ? `Se han detectado ${dangerCount} puntos graves que desaconsejan la compra sin prueba mecánica previa en taller profesional.`
+                : warningCount > 0
+                ? `Se han encontrado ${warningCount} desgastes moderados. Te sugerimos usarlos para negociar una rebaja del precio de venta.`
+                : 'No se han apreciado fallos graves en frío, embrague ni humo. Buen candidato para comprar.'}
+            </p>
+          </div>
 
-          {/* Option buttons */}
-          <div className="space-y-2.5 mb-6">
-            {currentStep.options.map((opt, idx) => {
-              const isSelected = selectedOptionIdx === idx;
+          {/* List of checked items */}
+          <div className="space-y-2">
+            <div className="text-xs font-bold text-white/50 uppercase tracking-wider">
+              Resumen de comprobaciones:
+            </div>
+            {IN_SITU_STEPS.map((step) => {
+              const optIdx = answers[step.id];
+              const opt = optIdx !== undefined ? step.options[optIdx] : null;
               return (
-                <button
-                  key={idx}
-                  onClick={() => handleSelectOption(idx)}
-                  className={`w-full p-4 rounded-2xl font-black text-xs uppercase tracking-wider text-left transition-all flex items-center justify-between border cursor-pointer ${
-                    isSelected
-                      ? opt.riskLevel === 'high'
-                        ? 'bg-red-500/20 border-red-500 text-red-200'
-                        : 'bg-emerald-500/20 border-emerald-500 text-emerald-200 shadow-lg'
-                      : 'bg-black border-white/10 text-white/70 hover:border-white/30'
-                  }`}
+                <div
+                  key={step.id}
+                  className="bg-[#11141E] border border-white/5 rounded-xl p-3 flex items-center justify-between text-xs"
                 >
-                  <span>{opt.label}</span>
-                  {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                </button>
+                  <span className="font-bold text-white">{step.title}</span>
+                  <span className="font-bold">
+                    {opt ? opt.label.split(' ')[0] + ' ' + opt.label.split(' ')[1] : '⚪ No comprobado'}
+                  </span>
+                </div>
               );
             })}
           </div>
 
-          {/* Instant Advice Box */}
-          {selectedOptionIdx !== undefined && (
-            <div
-              className={`p-4 rounded-2xl border text-xs font-bold leading-relaxed transition-all animate-fade-in ${
-                currentStep.options[selectedOptionIdx].riskLevel === 'high'
-                  ? 'bg-red-500/20 border-red-500/40 text-red-200'
-                  : currentStep.options[selectedOptionIdx].riskLevel === 'medium'
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-200'
-                  : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-200'
-              }`}
-            >
-              {currentStep.options[selectedOptionIdx].advice}
-            </div>
-          )}
-        </div>
-
-        {/* Navigation buttons */}
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-          <button
-            disabled={currentStepIndex === 0}
-            onClick={() => setCurrentStepIndex((prev) => prev - 1)}
-            className="px-4 py-2 rounded-xl text-xs font-black uppercase text-white/50 hover:text-white bg-black border border-white/10 disabled:opacity-30 flex items-center gap-1 cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Anterior
-          </button>
-
-          {currentStepIndex < ASSISTANT_STEPS.length - 1 ? (
+          {/* Actions */}
+          <div className="space-y-2 pt-2">
             <button
-              onClick={() => setCurrentStepIndex((prev) => prev + 1)}
-              className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-black flex items-center gap-1.5 shadow-lg cursor-pointer"
-            >
-              Siguiente Paso
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
+              id="assistant-finish-to-home-btn"
               onClick={onFinish}
-              className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-white hover:bg-blue-50 text-black flex items-center gap-1.5 shadow-lg cursor-pointer"
+              className="w-full py-3.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-black text-xs uppercase tracking-wider cursor-pointer"
             >
-              Finalizar Revisión
-              <CheckCircle2 className="w-4 h-4 text-blue-600" />
+              Finalizar e ir a Inicio
             </button>
-          )}
+            <button
+              id="assistant-repeat-btn"
+              onClick={handleReset}
+              className="w-full py-2.5 rounded-xl bg-transparent hover:bg-white/5 text-white/60 text-xs font-bold cursor-pointer"
+            >
+              Repetir comprobación
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
